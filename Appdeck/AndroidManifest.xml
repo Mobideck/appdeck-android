@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.mobideck.appdeck"
+    android:versionCode="1"
+    android:versionName="1.0" >
+    
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>     
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    
+    <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
+    <uses-permission android:name="com.android.browser.permission.READ_HISTORY_BOOKMARKS" />
+    <!--<uses-permission android:name="android.permission.CAMERA"/>-->    
+    
+    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
+
+    <permission android:name="com.mobideck.appdeck.permission.C2D_MESSAGE"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="com.mobideck.appdeck.permission.C2D_MESSAGE" />    
+    
+    <uses-sdk
+        android:minSdkVersion="9"
+        android:targetSdkVersion="19" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@drawable/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/AppBaseTheme"
+        android:hardwareAccelerated="true"
+        android:largeHeap="true"
+        android:name="com.mobideck.appdeck.AppDeckApplication"
+         >
+
+        <!--  AppDeck Test App -->
+ 		<meta-data android:name="AppDeckJSONURL" android:value="http://config.appdeck.mobi/json/218hf32d1901627d35131fa83b63f56ae906"></meta-data>
+<!--          PC INpact -->
+<!-- 		<meta-data android:name="AppDeckJSONURL" android:value="http://config.appdeck.mobi/json/224h315e5a19e0865b35ac7e5b3713ef5a3b"></meta-data>-->
+		<!--  Play3-Live -->
+<!-- 		<meta-data android:name="AppDeckJSONURL" android:value="http://config.appdeck.mobi/json/757h76c94e17ec542ce74d210eb3f949bf6f"></meta-data> -->
+		<!--  94 citoyens -->
+<!-- 		<meta-data android:name="AppDeckJSONURL" android:value="http://config.appdeck.mobi/json/837hf414478b7e520570c0a057bd3fe124c9"></meta-data> -->
+		<meta-data android:name="noCache" android:value="false"></meta-data>
+		
+        <receiver
+            android:name="com.mobideck.appdeck.GcmBroadcastReceiver"
+            android:permission="com.google.android.c2dm.permission.SEND" >
+            <intent-filter>
+                <action android:name="com.google.android.c2dm.intent.RECEIVE" />
+                <category android:name="com.mobideck.appdeck" />
+            </intent-filter>
+        </receiver>
+        <service android:name="com.mobideck.appdeck.GcmIntentService" />		
+<!--             android:launchMode="singleInstance" -->		
+        <activity
+            android:name="com.mobideck.appdeck.Loader"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+
+            android:label="@string/app_name" >
+            <intent-filter>
+				<action android:name="android.intent.action.MAIN" />
+				<category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name="com.mobideck.appdeck.PopUp"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:label="@string/app_name" >
+            <intent-filter>
+
+            </intent-filter>
+        </activity>        
+        <activity
+            android:name="com.mobideck.appdeck.MainActivity"
+            android:theme="@style/Theme.Sherlock.NoActionBar"
+            android:launchMode="singleInstance"
+            android:label="@string/app_name" >
+            <intent-filter>
+<!--                  <action android:name="android.intent.action.MAIN" />  -->
+<!--                 <category android:name="android.intent.category.LAUNCHER" /> -->
+            </intent-filter>
+        </activity>
+        <activity
+            android:name="com.mobideck.appdeck.PageSwipe"
+            android:label="@string/app_name" >
+            <intent-filter>
+
+            </intent-filter>
+        </activity>
+		
+        <meta-data android:name="com.crashlytics.ApiKey" android:value="06661b993731d02660ac43897854ae842acf59be"/>
+        
+        <meta-data android:name="com.google.android.gms.version" android:value="@integer/google_play_services_version" />
+    </application>
+
+</manifest>
