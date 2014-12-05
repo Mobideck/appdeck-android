@@ -29,7 +29,7 @@ if (defined('FORCE_DOWNLOAD') && FORCE_DOWNLOAD === true && file_exists($beacon_
 if (!file_exists($beacon_output_file_path))
   file_put_contents($beacon_output_file_path, mt_rand());
 
-$json_data = ezcurl($app_json_url, $error);
+list($json_headers, $json_data) = ezcurl($app_json_url, $error);
 
 if ($json_data == false)
   appdeck_error("failed to download: {$app_json_url}: {$error}", $app_plist_path);
@@ -96,13 +96,9 @@ easy_embed("image_network_error", "http://appdata.static.appdeck.mobi/res/".EMBE
 
 easy_embed("logo");
 
-/*appdeck_add_ressource("http://appdata.static.appdeck.mobi/js/appdeck_1.5_ios.js", false, true);
-appdeck_add_ressource("http://appdata.static.appdeck.mobi/js/appdeck_1.6_ios.js", false, true);
-appdeck_add_ressource("http://appdata.static.appdeck.mobi/js/appdeck_1.7_ios.js", false, true);
-appdeck_add_ressource("http://appdata.static.appdeck.mobi/js/appdeck_1.8_android.js", false, true);
-appdeck_add_ressource("http://appdata.static.appdeck.mobi/js/appdeck_1.9_ios.js", false, true);*/
 appdeck_add_ressource("http://appdata.static.appdeck.mobi/js/appdeck_1.10.js", false, true);
+appdeck_add_ressource("http://appdata.static.appdeck.mobi/js/appdeck_dev.js", false, true);
 appdeck_add_ressource("http://appdata.static.appdeck.mobi/js/appdeck.js", false, true);
-//appdeck_add_ressource("http://testapp.appdeck.mobi/appdeck.js", false, true);
+appdeck_add_ressource("http://appdata.static.appdeck.mobi/js/fastclick.js", false, true);
 
 appdeck_ok("{$count_resource} resources embed in app");

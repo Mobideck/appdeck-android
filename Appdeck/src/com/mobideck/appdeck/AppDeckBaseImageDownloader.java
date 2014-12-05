@@ -18,9 +18,9 @@ public class AppDeckBaseImageDownloader extends BaseImageDownloader {
 	public InputStream getStream(String imageUri, Object extra) throws IOException {
 
 		// try from resources first
-		InputStream stream = AppDeck.getInstance().cache.getEmbedResourceStream(imageUri);
-		if (stream != null)
-			return stream;
+		CacheManagerCachedResponse cachedResponse = AppDeck.getInstance().cache.getEmbedResponse(imageUri);
+		if (cachedResponse != null)
+			return cachedResponse.getStream();
 		
 		return super.getStream(imageUri, extra);
 	}

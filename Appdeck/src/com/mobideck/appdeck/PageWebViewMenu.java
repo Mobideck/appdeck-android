@@ -6,7 +6,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 @SuppressLint("SetJavaScriptEnabled")
-public class PageWebViewMenu extends SmartWebView {
+public class PageWebViewMenu extends XSmartWebView {
 
 	public static final int POSITION_LEFT = 1;
 	public static final int POSITION_RIGHT = 2;

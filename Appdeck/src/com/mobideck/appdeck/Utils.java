@@ -1,20 +1,31 @@
 package com.mobideck.appdeck;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Reader;
+import java.io.Writer;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.math.BigInteger;
 import java.net.ServerSocket;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Random;
+import java.util.Scanner;
 
 import org.apache.commons.io.IOUtils;
 
-import com.actionbarsherlock.view.MenuItem;
+//import org.apache.commons.io.IOUtils;
+
 import com.nostra13.universalimageloader.core.DisplayImageOptions;
 import com.nostra13.universalimageloader.core.assist.FailReason;
 import com.nostra13.universalimageloader.core.assist.ImageSize;
@@ -30,6 +41,7 @@ import android.os.Build;
 import android.os.Environment;
 import android.telephony.TelephonyManager;
 import android.util.DisplayMetrics;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.ViewGroup.LayoutParams;
@@ -190,7 +202,7 @@ public class Utils {
         in.close();
         out.close();
     }   
-    
+    /*
     public static String readStream(InputStream stream)
     {
     	BufferedInputStream is = new BufferedInputStream(stream);
@@ -202,7 +214,7 @@ public class Utils {
 		}
     	return null;
     }
-    
+    */
 	public static String getUid(Context context){
 		TelephonyManager telManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
 		String deviceId = telManager.getDeviceId();
@@ -425,5 +437,105 @@ public class Utils {
 	    int randomNum = rand.nextInt((max - min) + 1) + min;
 
 	    return randomNum;
+	}
+	
+	public static boolean filePutContents(String fileName, String content)
+	{
+	    try {
+			File outputFile = new File(fileName);
+			Writer writer = new BufferedWriter(new FileWriter(outputFile));
+	    	writer.write(content);
+	    	writer.close();
+	    	return true;
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return false;
+		}
+	}
+	
+	public static boolean filePutContents(String fileName, byte[] content)
+	{
+	    try {
+			File outputFile = new File(fileName);
+			IOUtils.write(content, new FileOutputStream(outputFile));
+	    	return true;
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return false;
+		}
+	}	
+	
+	public static String readFile(String pathname) throws IOException {
+
+	    File file = new File(pathname);
+	    StringBuilder fileContents = new StringBuilder((int)file.length());
+	    Scanner scanner = new Scanner(file);
+	    String lineSeparator = System.getProperty("line.separator");
+
+	    try {
+	        while(scanner.hasNextLine()) {        
+	            fileContents.append(scanner.nextLine() + lineSeparator);
+	        }
+	        return fileContents.toString();
+	    } finally {
+	        scanner.close();
+	    }
+	}
+	
+	public static String fileGetContents(String fileName)
+	{
+	    try {
+	    	String content = Utils.readFile(fileName);
+	    	return content;
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}
+	}
+	
+	public static String streamGetContent(InputStream is)
+	{
+		java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\A");
+	    return s.hasNext() ? s.next() : "";
+	}
+	
+	public static InputStream streamFromFilePath(String filePath)
+	{
+		try {
+			File cache_file = new File(filePath);
+			// file exist in cache, we use it
+			if (cache_file.exists())
+			{
+				return new FileInputStream(cache_file);
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return null;		
+	}
+	
+	public static String md5(String input)
+	{
+		try {
+			String result = input;
+		    if(input != null) {
+		        MessageDigest md;
+		        md = MessageDigest.getInstance("MD5");
+		        md.update(input.getBytes());
+		        BigInteger hash = new BigInteger(1, md.digest());
+		        result = hash.toString(16);
+		        while(result.length() < 32) { //40 for SHA-1
+		            result = "0" + result;
+		        }
+		    }
+		    return result;
+		} catch (NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} //or "SHA-1"
+		return null;	    
 	}	
 }

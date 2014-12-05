@@ -25,12 +25,17 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
-import org.apache.commons.io.input.TeeInputStream;
+import org.apache.http.Header;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.JSONTokener;
+
 import com.jakewharton.disklrucache.DiskLruCache;
 import com.wuman.twolevellrucache.TwoLevelLruCache;
 import android.annotation.SuppressLint;
@@ -51,11 +56,11 @@ public class CacheManager {
 	private LruCache<String, byte[]> memoryCache;
 	//SimpleDiskCache diskCache;
 	
-	@SuppressWarnings("unused")
-	private DiskLruCache diskCache;
+	//@SuppressWarnings("unused")
+	//private DiskLruCache diskCache;
 
-	private TwoLevelLruCache<CacheManagerEntry> cache;
-	private CacheEntryConverter<CacheManagerEntry> converter;
+	//private TwoLevelLruCache<CacheManagerEntry> cache;
+	//private CacheEntryConverter<CacheManagerEntry> converter;
 	
 	String userAgent;
 	
@@ -65,13 +70,14 @@ public class CacheManager {
 	{
 		appDeck = AppDeck.getInstance();
 		
-		String regexp = "(.appdeckcdn.com|appdata.static.appdeck.mobi|static.appdeck.mobi|ajax.googleapis.com|cachedcommons.org|cdnjs.cloudflare.com|code.jquery.com|ajax.aspnetcdn.com|ajax.microsoft.com|ads.mobcdn.com|.akamai.net|.akamaiedge.net|.llnwd.net|edgecastcdn.net|.systemcdn.net|hwcdn.net|.panthercdn.com|.simplecdn.net|.instacontent.net|.footprint.net|.ay1.b.yahoo.com|.yimg.|.google.|googlesyndication.|youtube.|.googleusercontent.com|.internapcdn.net|.cloudfront.net|.netdna-cdn.com|.netdna-ssl.com|.netdna.com|.cotcdn.net|.cachefly.net|bo.lt|.cloudflare.com|.afxcdn.net|.lxdns.com|.att-dsa.net|.vo.msecnd.net|.voxcdn.net|.bluehatnetwork.com|.swiftcdn1.com|.cdngc.net|.fastly.net|.nocookie.net|.gslb.taobao.com|.gslb.tbcache.com|.mirror-image.net|.cubecdn.net|.yottaa.net|.r.cdn77.net|.incapdns.net|.bitgravity.com|.r.worldcdn.net|.r.worldssl.net|tbcdn.cn|.taobaocdn.com|.ngenix.net|.pagerain.net|.ccgslb.com|cdn.sfr.net|.azioncdn.net|.azioncdn.com|.azion.net|.cdncloud.net.au|cdn.viglink.com|.ytimg.com|.dmcdn.net|.googleapis.com|.googleusercontent.com)";
+		String regexp = "(.appdeckcdn.com|appdata.static.appdeck.mobi|static.appdeck.mobi|ajax.googleapis.com|cachedcommons.org|cdnjs.cloudflare.com|code.jquery.com|ajax.aspnetcdn.com|ajax.microsoft.com|ads.mobcdn.com|.akamai.net|.akamaiedge.net|.llnwd.net|edgecastcdn.net|.systemcdn.net|hwcdn.net|.panthercdn.com|.simplecdn.net|.instacontent.net|.footprint.net|.ay1.b.yahoo.com|.yimg.|.google.|googlesyndication.|youtube.|.googleusercontent.com|.internapcdn.net|.cloudfront.net|.netdna-cdn.com|.netdna-ssl.com|.netdna.com|.cotcdn.net|.cachefly.net|bo.lt|.cloudflare.com|.afxcdn.net|.lxdns.com|.att-dsa.net|.vo.msecnd.net|.voxcdn.net|.bluehatnetwork.com|.swiftcdn1.com|.cdngc.net|.fastly.net|.nocookie.net|.gslb.taobao.com|.gslb.tbcache.com|.mirror-image.net|.cubecdn.net|.yottaa.net|.r.cdn77.net|.incapdns.net|.bitgravity.com|.r.worldcdn.net|.r.worldssl.net|tbcdn.cn|.taobaocdn.com|.ngenix.net|.pagerain.net|.ccgslb.com|cdn.sfr.net|.azioncdn.net|.azioncdn.com|.azion.net|.cdncloud.net.au|cdn.viglink.com|.ytimg.com|.dmcdn.net|.googleapis.com|.googleusercontent.com|fonts.gstatic.com)";
 		
 		cdn = Pattern.compile(regexp, Pattern.CASE_INSENSITIVE);
 	}
 	
 	void init(Context context)
 	{
+		/*
 		final File diskCacheDir = getDiskCacheDir(context, "webDiskCacheManager");		
 		
 		userAgent = Utils.getDefaultUserAgentString(context);
@@ -103,7 +109,7 @@ public class CacheManager {
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}		
+		}	*/	
 	}
 	
     private File getDiskCacheDir(Context context, String uniqueName)
@@ -127,19 +133,20 @@ public class CacheManager {
     	}
     	
     	/*
-    // Check if media is mounted or storage is built-in, if so, try and use external cache dir
-    // otherwise use internal cache dir
-        final String cachePath =
-            Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState()) ||
-                    !Utils.isExternalStorageRemovable() ?
-                    Utils.getExternalCacheDir(context).getPath() :
-                    context.getCacheDir().getPath();
-*/
+	    // Check if media is mounted or storage is built-in, if so, try and use external cache dir
+	    // otherwise use internal cache dir
+	        final String cachePath =
+	            Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState()) ||
+	                    !Utils.isExternalStorageRemovable() ?
+	                    Utils.getExternalCacheDir(context).getPath() :
+	                    context.getCacheDir().getPath();
+    	 */
     	if (cachePath != null)
     		return new File(cachePath + File.separator + uniqueName);
     	return null;
     }	
 	
+    // cache Result API
     public class CacheResult
     {
     	public boolean isInCache = false;
@@ -175,6 +182,7 @@ public class CacheManager {
 		return new CacheResult(false, 0);
 	}
 
+	/*
 	public class AppDeckCacheResponse extends CacheResponse
 	{
 		InputStream stream;
@@ -193,8 +201,8 @@ public class CacheManager {
 		public Map<String, List<String>> getHeaders() throws IOException {
 			return new HashMap<String, List<String>>();
 		}
-	}
-	
+	}*/
+	/*
 	public String getCachedData(String absoluteURL)
 	{
 		InputStream stream = getEmbedResourceStream(absoluteURL);
@@ -212,17 +220,17 @@ public class CacheManager {
 				e.printStackTrace();
 			}
 		 return null;
-	}
+	}*/
 	
 	@SuppressWarnings("deprecation")
-	public InputStream getEmbedResourceStream(String absoluteURL)
+	private InputStream getEmbedResourceStream(String absoluteURL)
 	{
 		AssetManager manager = appDeck.assetManager;
 		String asset_path =  absoluteURL.replace("http://", "");
 		asset_path =  URLEncoder.encode(asset_path);
 		if (asset_path.length() > 48)
 		{
-			asset_path = asset_path.substring(0, 48) + "_" + md5(asset_path);
+			asset_path = asset_path.substring(0, 48) + "_" + Utils.md5(asset_path);
 		}
 		asset_path = "httpcache/" + asset_path + ".png";
 		
@@ -236,18 +244,28 @@ public class CacheManager {
 		}
 		return null;
 	}
-	
-	public WebResourceResponse getEmbedResource(String absoluteURL)
+
+	private InputStream getEmbedResourceMetaStream(String absoluteURL)
 	{
-		InputStream stream = getEmbedResourceStream(absoluteURL);
-		if (stream != null)
+		AssetManager manager = appDeck.assetManager;
+		String asset_path =  absoluteURL.replace("http://", "");
+		asset_path =  URLEncoder.encode(asset_path);
+		if (asset_path.length() > 48)
 		{
-			WebResourceResponse response = new WebResourceResponse(null, null, stream);
-			return response;
+			asset_path = asset_path.substring(0, 48) + "_" + Utils.md5(asset_path);
+		}
+		asset_path = "httpcache/" + asset_path + ".meta.png";
+		
+		 try {
+			InputStream stream = manager.open(asset_path);
+			return stream;
+		} catch (IOException e) {
+			e.printStackTrace();
+			//Crashlytics.log("IOException while loading embed ressource "+absoluteURL+" "+e.getMessage());
 		}
 		return null;
 	}
-	
+			
 	void DeleteRecursive(File dir, boolean deleteCurrent)
 	{
 	    Log.d("DeleteRecursive", "DELETEPREVIOUS TOP" + dir.getPath());
@@ -284,7 +302,7 @@ public class CacheManager {
 		File dir = new File(cache_path);
 		DeleteRecursive(dir, false);
 	}
-	
+	/*
 	public CacheResponse getEmbedResourceCacheResponse(String absoluteURL)
 	{
 		InputStream stream = getEmbedResourceStream(absoluteURL);
@@ -294,13 +312,14 @@ public class CacheManager {
 			return response;
 		}
 		return null;
-	}	
+	}	*/
 	
 	public String getCachePath()
 	{
 		return appDeck.cacheDir.toString() + "/httpcache/" /*+ appDeck.config.app_version*/;
 	}
 	
+	/*
 	public void storeInCache(String absoluteURL, URLConnection ucon)
 	{
 		String cache_path = getCacheEntryPath(absoluteURL);
@@ -312,22 +331,26 @@ public class CacheManager {
 			 e.printStackTrace();
 		 }		
 	}
-	
-	public void storeInCache(String absoluteURL, String response)
+	*/
+
+	public void storeInCache(String absoluteURL, Header[] headers, byte[] content)
 	{
 		String cache_path = getCacheEntryPath(absoluteURL);
 		 try {
-			 File cache_file = new File(cache_path);
-			 OutputStream cacheStream = new FileOutputStream(cache_file);
-			 PrintStream out = new PrintStream(cacheStream);
-			 out.print(response);
-			 out.close();
-			 cacheStream.close();
-		 } catch (IOException e) {
+			Utils.filePutContents(cache_path, content);
+			JSONObject jsonObj = new JSONObject();
+			for (int k = 0; k < headers.length; k++)
+			{
+				Header header = headers[k];
+				jsonObj.put(header.getName(), header.getValue());
+			}
+			Utils.filePutContents(cache_path+".meta", jsonObj.toString());
+		 } catch (Exception e) {
 			 e.printStackTrace();
 		 }		
-	}	
+	}
 	
+	/*
 	public void writeMetaData(String cache_path, String absoluteURL, String mime_type, String encoding)
 	{
 		String cache_path_metadata = cache_path + ".metadata";
@@ -343,8 +366,8 @@ public class CacheManager {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-	}
-	
+	}*/
+	/*
 	public class CacheMetaData
 	{
 		public String absoluteURL;
@@ -362,8 +385,8 @@ public class CacheManager {
 			this.mime_type = mime_type;
 			this.encoding = encoding;
 		}
-	}
-	
+	}*/
+	/*
 	public CacheMetaData readMetaData(String cache_path)
 	{
 		String cache_path_metadata = cache_path + ".metadata";
@@ -381,8 +404,9 @@ public class CacheManager {
 			e.printStackTrace();
 		}
 		return new CacheMetaData();
-	}	
+	}*/	
 	
+	/*
 	public WebResourceResponse createCacheableResponse(String absoluteURL, String cache_path, String cookie) throws IOException
 	{
 		Log.i(TAG, "Download : "+absoluteURL);
@@ -392,13 +416,6 @@ public class CacheManager {
 		ucon.setRequestProperty("User-Agent", userAgent);
 		ucon.setRequestProperty("Accept-Encoding", "gzip");	
 		// set cookie
-		/*CookieManager cookieManager = CookieManager.getInstance();
-		if (cookieManager != null)
-		{
-			String cookie = cookieManager.getCookie(absoluteURL);
-			if (cookie != null)
-				ucon.setRequestProperty("Cookie", cookie.toString());
-		}*/
 		if (cookie != null)
 			ucon.setRequestProperty("Cookie", cookie.toString());
 		try
@@ -423,29 +440,28 @@ public class CacheManager {
 			File cache_file = new File(cache_path);
 			OutputStream cacheStream = new FileOutputStream(cache_file);
 			BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(cacheStream);
-			TeeInputStream teeInputStream = new TeeInputStream(bufferedInputStream, bufferedOutputStream, true);
-			WebResourceResponse response = new WebResourceResponse(mime_type, encoding, new BufferedInputStream(teeInputStream));
-			return response;
+			return null;
 		} catch (Exception e) {
 			// TODO: handle exception
 			e.printStackTrace();
 		}
 		 return null;
-	}
+	}*/
 	
 	@SuppressWarnings("deprecation")
 	public String getCacheEntryPath(String absoluteURL)
 	{
 		String cache_path =  absoluteURL.replace("http://", "");
 		cache_path =  URLEncoder.encode(cache_path);
-		if (cache_path.length() > 128)
+		if (cache_path.length() > 48)
 		{
-			cache_path = cache_path.substring(0, 64) + md5(cache_path);
+			cache_path = cache_path.substring(0, 48) + '_' + Utils.md5(cache_path);
 		}
 		cache_path = getCachePath() + cache_path;
 		return cache_path;
 	}
 	
+	/*
 	public InputStream getCachedResourceStream(String absoluteURL)
 	{
 		String cache_path = getCacheEntryPath(absoluteURL);
@@ -459,9 +475,70 @@ public class CacheManager {
 		 } catch (IOException e) {
 			 e.printStackTrace();
 		 }
-		 return null;		
+		 return null;
+	}*/
+	
+	public CacheManagerCachedResponse getCachedResponse(String absoluteURL)
+	{
+		// step 1: data
+		String cache_path = getCacheEntryPath(absoluteURL);
+		InputStream streamData = Utils.streamFromFilePath(cache_path);
+		 if (streamData == null)
+			 return null;
+		 
+		// step 2: headers
+		String cache_path_meta = cache_path+".meta";
+		InputStream streamMeta = Utils.streamFromFilePath(cache_path_meta);
+		 if (streamMeta == null)
+			 return null;
+		 
+		 CacheManagerCachedResponse cachedResponse = CacheManagerCachedResponse.fromStream(absoluteURL, streamData, streamMeta);
+		 return cachedResponse;
 	}
 	
+	public CacheManagerCachedResponse getEmbedResponse(String absoluteURL)
+	{
+		// step 1: data
+		InputStream streamData = getEmbedResourceStream(absoluteURL);
+		 if (streamData == null)
+			 return null;		 
+		// step 2: headers
+		InputStream streamMeta = getEmbedResourceMetaStream(absoluteURL);
+		 if (streamMeta == null)
+			 return null;
+
+		 CacheManagerCachedResponse cachedResponse = CacheManagerCachedResponse.fromStream(absoluteURL, streamData, streamMeta);
+		 return cachedResponse;
+	}
+
+	public CacheManagerCachedResponse getResponse(String absoluteURL)
+	{
+		CacheManagerCachedResponse response = getCachedResponse(absoluteURL);
+		if (response == null)
+			response = getEmbedResponse(absoluteURL);
+		return response;
+	}	
+	
+	// api for webview
+	public WebResourceResponse getCachedResource(String absoluteURL)
+	{
+		CacheManagerCachedResponse cachedResponse = getCachedResponse(absoluteURL);
+		if (cachedResponse == null)
+			return null;
+		WebResourceResponse response = cachedResponse.getWebResourceResponse();
+		return response;
+	}
+	
+	public WebResourceResponse getEmbedResource(String absoluteURL)
+	{
+		CacheManagerCachedResponse cachedResponse = getEmbedResponse(absoluteURL);
+		if (cachedResponse == null)
+			return null;
+		WebResourceResponse response = cachedResponse.getWebResourceResponse();
+		return response;
+	}
+	
+	/*
 	public WebResourceResponse getCachedResource(String absoluteURL, String cookie)
 	{
 		String cache_path = getCacheEntryPath(absoluteURL);
@@ -481,7 +558,7 @@ public class CacheManager {
 			 e.printStackTrace();
 		 }
 		 return null;
-	}
+	}*/
 	
 	public boolean shouldCache(String absoluteURL)
 	{
@@ -518,6 +595,7 @@ public class CacheManager {
 		return false;
 	}
 	
+	/*
 	public byte[] download(String absoluteURL)
 	{
 		try {
@@ -539,15 +617,15 @@ public class CacheManager {
 			e.printStackTrace();
 		}		
 		return null;
-	}	
-	
+	}	*/
+	/*
 	public WebResourceResponse responseFromData(byte[] data)
 	{
 	    ByteArrayInputStream bais = new ByteArrayInputStream(data);
         WebResourceResponse response = new WebResourceResponse(null, null, bais);
         return response;
-	}
-	
+	}*/
+	/*
 	public Boolean store(String absoluteURL, URLConnection urlConnection)
 	{
 		try {		
@@ -566,13 +644,13 @@ public class CacheManager {
 			e.printStackTrace();
 		}	
 		return false;
-	}
-	
+	}*/
+	/*
 	public byte[]load(String absoluteURL)
 	{
 		return memoryCache.get(absoluteURL);
-	}
-	
+	}*/
+	/*
 	public WebResourceResponse getFromCache(String absoluteURL)
 	{
 		byte[] data = null;
@@ -593,8 +671,6 @@ public class CacheManager {
 			return entry.getWebResourceResponse();
 		}
 		
-/*		if (true)
-			return null;*/
 		// memory ?
 		data = memoryCache.get(absoluteURL);
 		if (data != null)
@@ -604,50 +680,7 @@ public class CacheManager {
 		//TODO: read from resource
 		
 		// disk ?
-/*		try {
-			InputStreamEntry entry = diskCache.getInputStream(url);
-			if (entry != null)
-			{
-				download(uri);
-				entry = diskCache.getInputStream(url);
-			}
-			
-			if (entry != null)
-			{
-		        Map<String, Serializable> metadata = entry.getMetadata();
-		        String mimeType = (String) metadata.get("Content-Type");
-		        if (mimeType == null)
-		        	mimeType = "application/octet- stream";
-		        String encoding = (String) metadata.get("Content-Encoding");
-		        if (encoding == null)
-		        	encoding = "identity";
-		        InputStream inputStream = entry.getInputStream();
-		        
-		     // read from the stream  
-		     ByteArrayOutputStream baos = new ByteArrayOutputStream();  
-		     byte[] content = new byte[ 2048 ];  
-		     int bytesRead = -1;  
-		     while( ( bytesRead = inputStream.read( content ) ) != -1 ) {  
-		         baos.write( content, 0, bytesRead );  
-		     } // while  
 
-		     // now, as you have baos in hand, I don't think you still need a bais instance  
-		     // but, to make it complete,
-		     // now you can generate byte array input stream as below    
-		     ByteArrayInputStream bais = new ByteArrayInputStream( baos.toByteArray() );  		        
-
-		        WebResourceResponse response = new WebResourceResponse(mimeType, encoding, bais);
-				
-		        Log.d("Cache Hit", url.toString());
-		        
-		        return response;
-				
-			}
-			
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}*/
 		
 		// download
 		data = download(absoluteURL);
@@ -663,30 +696,21 @@ public class CacheManager {
 		
 		
 //		return null;
-	}
-
+	}*/
+/*
 	// disk cache
 	@SuppressWarnings("unused")
 	private byte[] getFromDisk(String url)
 	{
-		/*
-		DiskLruCache.Snapshot snapshot = diskCache.get(toInternalKey(url));
-		if (snapshot == null) return null;
 
-		try {
-			return new StringEntry(snapshot.getString(VALUE_IDX), readMetadata(snapshot));
-		} finally {
-			snapshot.close();
-		}
-		*/
 		return null;
-	}
+	}*/
 	
 	
 	/*private String toInternalKey(String key) {
 		return md5(key);
 	}*/
-
+/*
 	private String md5(String input)
 	{
 		try {
@@ -707,7 +731,7 @@ public class CacheManager {
 			e.printStackTrace();
 		} //or "SHA-1"
 		return null;	    
-	}	
+	}	*/
 	
 	/*
 	private String md5(String s) {
@@ -724,6 +748,7 @@ public class CacheManager {
 		}
 	}*/
 	
+	/*
 	public class CacheEntryConverter<T>  implements TwoLevelLruCache.Converter<T> {
 
 		public CacheEntryConverter()
@@ -757,8 +782,8 @@ public class CacheManager {
 				e.printStackTrace();
 			}
 			return null;
-	    }
-
+	    }*/
+/*
 	    @Override
 	    public void toStream(T obj, OutputStream bytes) throws IOException {
 	    	CacheManagerEntry entry = (CacheManagerEntry)obj;
@@ -780,7 +805,13 @@ public class CacheManager {
 	    	oos.writeInt(length);
 	    	oos.write(data);
 	    	oos.close();
-	    }
+	    }*/
+	    
+	    /* new version, use metadata */
+	    
+	    
+	    
+	    
 
-	}
+	
 }

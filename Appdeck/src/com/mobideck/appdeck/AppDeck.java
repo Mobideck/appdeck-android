@@ -2,8 +2,6 @@ package com.mobideck.appdeck;
 
 import java.io.File;
 
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonParser;
 import com.nostra13.universalimageloader.cache.disc.impl.UnlimitedDiscCache;
 import com.nostra13.universalimageloader.core.DisplayImageOptions;
 import com.nostra13.universalimageloader.core.ImageLoader;
@@ -43,8 +41,6 @@ public class AppDeck {
 	
 	public ImageLoader imageLoader;
 	public DisplayImageOptions imageLoaderDefaultOptions;
-	
-	public JsonFactory jsonFactory;
 	
 	public String packageName;
 	
@@ -109,10 +105,6 @@ public class AppDeck {
     	
     	CookieSyncManager.createInstance(context);
     	CookieManager.getInstance().setAcceptCookie(true);
-
-    	
-    	jsonFactory = new JsonFactory();
-    	jsonFactory.enable(JsonParser.Feature.ALLOW_COMMENTS);
     	    	
     	ready = false;    	
     	

@@ -8,6 +8,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Vector;
 
+import org.apache.http.Header;
+
 import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.AsyncHttpResponseHandler;
 import com.loopj.android.http.BinaryHttpResponseHandler;
@@ -41,7 +43,8 @@ public class RemoteAppCache {
 	{
 
 		AsyncHttpClient client = new AsyncHttpClient();
-		client.get(url, new BinaryHttpResponseHandler(new String[] { "application/x-7z-compressed"}) {
+		client.get(url, new BinaryHttpResponseHandler(new String[] { ".*" /*"application/x-7z-compressed"*/}) {
+				
 		     @Override
 		     public void onSuccess(byte[] data) {
 		         // Successfully got a response
@@ -60,12 +63,26 @@ public class RemoteAppCache {
 		    	    }).start();
 		     }
 		     
-		     /*
 		     @Override
-		     public void onFailure(Throwable e, byte[] data) {
-		         // Response failed :(
-		    	 Log.d(TAG,"Failed to download: " + url);
-		     }*/
+		    public void onFinish() {
+		    	// TODO Auto-generated method stub
+		    	super.onFinish();
+		    }
+		     
+		     @Override
+		    public void onStart() {
+		    	// TODO Auto-generated method stub
+		    	super.onStart();
+		    }
+
+			@Override
+			public void onFailure(int statusCode, Header[] headers, byte[] binaryData,
+					Throwable error) {
+				// TODO Auto-generated method stub
+				Log.d(TAG,"Failed to download: " + url);
+				super.onFailure(statusCode, headers, binaryData, error);
+			}
+		     
 		 });	
 	}
 	

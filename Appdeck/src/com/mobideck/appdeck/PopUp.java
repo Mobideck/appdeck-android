@@ -13,20 +13,11 @@ import android.view.DragEvent;
 import android.view.Surface;
 import android.view.View;
 import android.view.View.OnDragListener;
+import android.view.Window;
 import android.widget.FrameLayout;
 
-import com.actionbarsherlock.app.SherlockFragmentActivity;
-import com.actionbarsherlock.view.ActionMode;
-import com.actionbarsherlock.view.Menu;
-import com.actionbarsherlock.view.MenuItem;
-import com.actionbarsherlock.view.Window;
-import com.mobideck.appdeck.R;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.jeremyfeinstein.slidingmenu.lib.SlidingMenu;
-import com.jeremyfeinstein.slidingmenu.lib.SlidingMenu.OnClosedListener;
-import com.jeremyfeinstein.slidingmenu.lib.SlidingMenu.OnOpenListener;
-import com.jeremyfeinstein.slidingmenu.lib.SlidingMenu.OnOpenedListener;
 import com.mobideck.android.support.SlidingMenuFixed;
+import com.mobideck.appdeck.R;
 
 public class PopUp extends Loader {
 	/*public final static String PAGE_URL = "com.mobideck.appdeck.URL";

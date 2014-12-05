@@ -16,7 +16,13 @@ $project_path = $argv[1];
 $app_manifest = openxml($project_path.'/AndroidManifest.xml');
 
 $app_json_url = $app_manifest->xpath("//meta-data[@android:name='AppDeckJSONURL']/@android:value");
+/*
+$app_package = $app_manifest->xpath("//manifest/@package");
+$app_package = $app_package[0];
 
+var_dump(shell_exec("/Applications/Android/sdk/platform-tools/adb shell \"pm uninstall {$app_package}\""));
+var_dump(shell_exec("/Applications/Android/sdk/platform-tools/adb shell \"rm -rf /data/app/{$app_package}-*\""));
+*/
 if ($app_json_url == false)
   appdeck_error('missing AppDeckJSONURL entry in AndroidManifest.xml (add <meta-data android:name="AppDeckJSONURL" android:value="..."></meta-data> in root of your AndroidManifest.xml file)', $app_plist_path);
 

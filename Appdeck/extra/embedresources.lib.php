@@ -48,23 +48,57 @@ function env($name)
 
 function ezcurl($url, &$error = null)
 {
-  static $ch = false;
+    static $ch = false;
 
-  if ($ch == false)
+    if ($ch == false)
     $ch = curl_init();
-  curl_setopt($ch, CURLOPT_URL, $url);
-  curl_setopt($ch, CURLOPT_HEADER, 0);
-  curl_setopt($ch, CURLOPT_USERAGENT, 'AppDeck');
-  curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-  curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-  curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-  $data = curl_exec($ch);
-  if ($error_id = curl_errno($ch))
+    // download data
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_HEADER, 1);
+    curl_setopt($ch, CURLOPT_USERAGENT, 'AppDeck');
+    curl_setopt($ch, CURLOPT_PROXY, 'v2.appdeck.mobi:3128');
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $data = curl_exec($ch);
+    $headers = array();
+    if ($error_id = curl_errno($ch))
     {
-      $error = curl_error($ch);
-      return false;
+        $error = curl_error($ch);
+        return array(false, false);
     }
-  return $data;
+    // extract header and body
+    while (1)
+      {
+        $pos = strpos($data, "\r\n\r\n");
+        $headers = substr($data, 0, $pos);
+        $headers = explode("\r\n", $headers);
+        $cmd = array_shift($headers);
+        $body = substr($data, $pos + 4  );
+        if ($cmd != 'HTTP/1.1 100 Continue')
+          break;
+        $data = $body;
+      }
+      // explode headers
+      $h = array();
+      foreach ($headers as $header)
+        {
+          $pos = strpos($header, ': ');
+          if ($pos === false)
+            continue;
+          $header_name = substr($header, 0, $pos);
+          $header_value = substr($header, $pos + 2);
+           // if header already exist, we create array
+           if (isset($h[$header_name]))
+           {
+              if (!is_array($h[$header_name]))
+                $h[$header_name] = array($h[$header_name]);
+             $h[$header_name] []= $header_value;
+           } else {
+             $h[$header_name] = $header_value;
+           }
+        }
+    return array($h, $body);
 }
 
 /*! JSON.minify()
@@ -234,7 +268,7 @@ function resolve_url($url_str, $source_url_str)
 }
 
 $count_resource = 0;
-function appdeck_add_ressource($url, $data = false, $force = false)
+function appdeck_add_ressource($url, $data = false, $headers = false, $force = false)
 {
   global $output_dir_path, $count_resource;
 
@@ -245,26 +279,31 @@ function appdeck_add_ressource($url, $data = false, $force = false)
   print " - - FileName: {$file_name}\n";
   if (strlen($file_name) > 48)
     $file_name = substr($file_name, 0, 48).'_'.md5($file_name);
+  $file_name_meta = EMBED_PREFIX.$file_name.'.meta'.EMBED_SUFFIX;
   $file_name = EMBED_PREFIX.$file_name.EMBED_SUFFIX;
   //$tmp_file_path = $tmp_dir_path."/".$file_name;
   $output_file_path = $output_dir_path."/".$file_name;
+  $output_file_path_meta = $output_dir_path."/".$file_name_meta;
   if (!file_exists($output_file_path) || $force == true)
     {
       if ($data === false)
-	{
-	  print " - - download {$url} into {$output_file_path}\n";
-	  $data = ezcurl($url, $error);
-	  if ($data == false)
-	    {
-	      appdeck_warning("failed to download: {$url}: {$error}");
-	      return;
-	    }
-	}
+    	{
+    	  print " - - download {$url} into {$output_file_path}\n";
+        list($headers, $data) = ezcurl($url, $error);
+    	  if ($data == false)
+    	    {
+    	      appdeck_warning("failed to download: {$url}: {$error}");
+    	      return;
+    	    }
+    	}
       else
-	  print " - - add resource for {$url} from data into {$output_file_path}\n";
+    	  print " - - add resource for {$url} from data into {$output_file_path}\n";
       $res = file_put_contents($output_file_path, $data);
       if ($res == false)
         appdeck_warning("failed to write resource {$url} in {$output_file_path}");
+      $res = file_put_contents($output_file_path_meta, json_encode($headers));
+      if ($res == false)
+        appdeck_warning("failed to write resource meta {$url} in {$output_file_path_meta}");
     }
   else
     print " - - resource {$url} already downloaded in {$output_file_path}\n";
@@ -275,7 +314,7 @@ function embed_url($embed_url)
 {
   print " - Embed URL: {$embed_url}\n";
 
-  $data = ezcurl($embed_url, $error);
+  list($headers, $data) = ezcurl($embed_url, $error);
 
   if ($data == false)
     {
@@ -289,7 +328,7 @@ function embed_url($embed_url)
     }
   $data = strip_c_comment($data);
   // we embed embed_url in application
-  appdeck_add_ressource($embed_url, $data, true);
+  appdeck_add_ressource($embed_url, $data, $headers, true);
   // we embed all url listed in this file
   $lines = explode("\n", $data);
   foreach ($lines as $line)
@@ -305,9 +344,9 @@ function easy_embed($name, $default_url = false)
   foreach (array($name, $name.'_tablet') as $field)
     {
       if (isset($info->$field))
-	$url = resolve_url($info->$field, $base_url);
+	     $url = resolve_url($info->$field, $base_url);
       if ($url !== false && $field == $name)
-	appdeck_add_ressource($url);
+	     appdeck_add_ressource($url);
     }
 }
 

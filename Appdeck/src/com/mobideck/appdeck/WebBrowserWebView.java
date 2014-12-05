@@ -306,6 +306,9 @@ public class WebBrowserWebView extends WebView {
 	    	if (appDeck.noCache)
 	    		return null;
 	    		    	
+	    	if (true)
+	    		return null;
+	    	
 	    	// resource is in embed resources
 	    	WebResourceResponse response = appDeck.cache.getEmbedResource(absoluteURL);
 	    	if (response != null)
@@ -314,7 +317,7 @@ public class WebBrowserWebView extends WebView {
 	    	// resources is in httpcache
 	    	if (appDeck.cache.shouldCache(absoluteURL))
 	    	{
-	    		response = appDeck.cache.getCachedResource(absoluteURL, null);
+	    		response = appDeck.cache.getEmbedResource(absoluteURL);
 	    		if (response != null)
 	    			return response;
 	    	}
@@ -451,7 +454,7 @@ public class WebBrowserWebView extends WebView {
         
         @Override
         public boolean onJsPrompt(WebView view, String url, String message, String defaultValue, final JsPromptResult result) 
-        {
+        {/*
 			if (message.startsWith("appdeckapi:") == true)
 			{
 				AppDeckApiCall call = new AppDeckApiCall(message.substring(11), defaultValue, result);
@@ -490,7 +493,7 @@ public class WebBrowserWebView extends WebView {
                             }
                         })
                 .show();
-            
+            */
             return true;
         };
 
@@ -498,7 +501,7 @@ public class WebBrowserWebView extends WebView {
             @Override  
             public void onShowCustomView(View view, CustomViewCallback callback) {
             	//super.onShowCustomView(view, callback);
-        		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
+        		if (Build.VERSION.SDK_INT > Build.VERSION_CODES.ICE_CREAM_SANDWICH)
         	    {
         			setLayerType(WebView.LAYER_TYPE_HARDWARE, null);
         	    }

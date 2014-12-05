@@ -6,17 +6,18 @@ import java.net.URISyntaxException;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentActivity;
+import android.support.v7.app.ActionBar;
+import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.FrameLayout;
 
-import com.actionbarsherlock.app.ActionBar;
-import com.actionbarsherlock.app.SherlockFragment;
-import com.actionbarsherlock.app.SherlockFragmentActivity;
 import com.nostra13.universalimageloader.core.assist.FailReason;
 import com.nostra13.universalimageloader.core.listener.SimpleImageLoadingListener;
 
-public class AppDeckFragment extends SherlockFragment {
+public class AppDeckFragment extends Fragment {
 
 	public static final String TAG = "AppDeckFragment";	
 	
@@ -98,7 +99,7 @@ public class AppDeckFragment extends SherlockFragment {
             	if (loader == null || imageUri == null || loadedImage == null)
             		return;
             	BitmapDrawable draw = new BitmapDrawable(loader.getResources(), loadedImage);
-            	SherlockFragmentActivity sa = getSherlockActivity();
+            	ActionBarActivity sa = (ActionBarActivity)AppDeckFragment.this.getActivity();
             	if (sa == null)
             		return;
             	ActionBar ac = sa.getSupportActionBar();
@@ -126,7 +127,8 @@ public class AppDeckFragment extends SherlockFragment {
         	}            
         	}, getActivity());
         } else {
-        	getSherlockActivity().getSupportActionBar().setTitle(actionBarTitle);
+        	ActionBarActivity aba = (ActionBarActivity)AppDeckFragment.this.getActivity();
+        	aba.getSupportActionBar().setTitle(actionBarTitle);
         }
 
 	}

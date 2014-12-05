@@ -1,6 +1,5 @@
 package com.mobideck.appdeck;
 
-import com.mobideck.appdeck.R;
 import com.crashlytics.android.Crashlytics;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -9,9 +8,11 @@ import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 
+import org.apache.http.Header;
 import org.littleshoot.proxy.HttpProxyServerBootstrap;
 import org.littleshoot.proxy.TransportProtocol;
 import org.littleshoot.proxy.impl.DefaultHttpProxyServer;
+import org.xwalk.core.XWalkPreferences;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
@@ -31,36 +32,39 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentManager.OnBackStackChangedListener;
 import android.support.v4.app.FragmentTransaction;
+import android.support.v4.widget.DrawerLayout;
+import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Display;
 import android.view.DragEvent;
 import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.Surface;
 import android.view.View;
 import android.view.View.OnDragListener;
+import android.view.ViewGroup.LayoutParams;
+import android.view.Window;
 import android.webkit.WebView;
-import com.actionbarsherlock.app.SherlockFragmentActivity;
-import com.actionbarsherlock.view.Menu;
-import com.actionbarsherlock.view.MenuItem;
-import com.actionbarsherlock.view.Window;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jeremyfeinstein.slidingmenu.lib.SlidingMenu;
-import com.jeremyfeinstein.slidingmenu.lib.SlidingMenu.OnClosedListener;
-import com.jeremyfeinstein.slidingmenu.lib.SlidingMenu.OnOpenListener;
-import com.jeremyfeinstein.slidingmenu.lib.SlidingMenu.OnOpenedListener;
+import android.widget.FrameLayout;
 import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.AsyncHttpResponseHandler;
-import com.mobideck.android.support.SlidingMenuFixed;
+import com.mobideck.appdeck.R;
 import com.nostra13.universalimageloader.core.DisplayImageOptions;
 import com.nostra13.universalimageloader.core.assist.FailReason;
 import com.nostra13.universalimageloader.core.listener.SimpleImageLoadingListener;
 
-public class Loader extends SherlockFragmentActivity {
+public class Loader extends ActionBarActivity {
 
+/*
+	// widespace
+    private static final String SPLASH_SID = "db28f022-c588-4c4f-9ba3-f5fb12ace5d1";
+
+    private AdSpace adSpaceSplash;
+	//private AdSpace adSpacePanorama;
+	*/    
+	
 	public final static String TAG = "LOADER";
 	public final static String JSON_URL = "com.mobideck.appdeck.JSON_URL";
 	
@@ -77,18 +81,14 @@ public class Loader extends SherlockFragmentActivity {
 	
 	protected AppDeck appDeck;
 	
-	private WebView leftMenuWebView;
-	private WebView rightMenuWebView;
+	private PageWebViewMenu leftMenuWebView;
+	private PageWebViewMenu rightMenuWebView;
 	
-	public SlidingMenuFixed slidingMenu;
-	
-	//private Loader self;
-	
-	//public int actionBarHeight;
-	
+    public DrawerLayout mDrawerLayout;
+    private FrameLayout mDrawerLeftMenu;
+    private FrameLayout mDrawerRightMenu;
+    
 	private PageMenuItem[] menuItems;
-	
-	//private List<AppDeckFragment> pages;
 	
 	//private jProxy jp;
 	private HttpProxyServerBootstrap proxyServerBootstrap;
@@ -117,9 +117,6 @@ public class Loader extends SherlockFragmentActivity {
             }
         }
     };	
-	
-    
-    
     
     protected void onCreatePass(Bundle savedInstanceState) {
     	super.onCreate(savedInstanceState);
@@ -129,6 +126,10 @@ public class Loader extends SherlockFragmentActivity {
     protected void onCreate(Bundle savedInstanceState) {
     	//requestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
 		//Debug.startMethodTracing("calc");
+		
+		XWalkPreferences.setValue(XWalkPreferences.ANIMATABLE_XWALK_VIEW, true);
+		//XWalkPreferences.setValue(XWalkPreferences.REMOTE_DEBUGGING, true);
+		
 		Crashlytics.start(this);
 		requestWindowFeature(Window.FEATURE_PROGRESS);
 		
@@ -136,20 +137,6 @@ public class Loader extends SherlockFragmentActivity {
         String app_json_url = intent.getStringExtra(JSON_URL);
         appDeck = new AppDeck(getBaseContext(), app_json_url);
     	super.onCreate(savedInstanceState);
-
-    	/*
-    	APL.setup(getApplicationContext());
-
-    	ProxyConfiguration currentProxy = null;
-    	try {
-    		URI uri = URI.create("http://www.google.com");
-    		ProxyConfiguration proxyConf = APL.getCurrentProxyConfiguration(uri);
-    		String result = ProxyUtils.getURI(uri, proxyConf.getProxy(), 10);    		
-    		currentProxy = APL.getCurrentProxyConfiguration(appDeck.config.app_base_url);
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}    	*/
     	
     	this.proxyHost = "127.0.0.1";
     	
@@ -173,107 +160,28 @@ public class Loader extends SherlockFragmentActivity {
                 .withAllowLocalOnly(true)
                 .withTransportProtocol(TransportProtocol.TCP)
                 .withFiltersSource(filtersSource);    	
-    	
-/*    	if (currentProxy != null)
-    		jp = new jProxy(8081, currentProxy.getProxyHost(), currentProxy.getProxyPort(), 20);
-    	else
-    		jp = new jProxy(8081, "", 0, 20);
-		jp.setDebug(0, new LogPrintStream("JProxy", 1));		// or set the debug level to 2 for tons of output
-		jp.start();*/
-    	
+    	    	
     	proxyServerBootstrap.start();
-    	
-		try {
-			WebkitProxy.setProxy("AppDeckApplication", this, this.proxyHost, this.proxyPort);
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+
+		setLoaderContentView();
 		
-		
-		
-        // change the way keyboard is hidden
-    	//InputMethodManager inputManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE); 
-    	//inputManager.toggleSoftInput (InputMethodManager.SHOW_FORCED, InputMethodManager.HIDE_NOT_ALWAYS);
-    	
-    	//this.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_);
-		setContentView(R.layout.loader);   	
-		
-        // Sliding Menu
-        slidingMenu = new SlidingMenuFixed(this);
-        if (appDeck.config.leftMenuUrl != null && appDeck.config.rightMenuUrl != null)
-        	slidingMenu.setMode(SlidingMenu.LEFT_RIGHT);
-        else if (appDeck.config.leftMenuUrl != null)
-        	slidingMenu.setMode(SlidingMenu.LEFT);
-        else if (appDeck.config.rightMenuUrl != null)
-        	slidingMenu.setMode(SlidingMenu.RIGHT);
-        slidingMenu.setTouchModeAbove(SlidingMenu.TOUCHMODE_FULLSCREEN);
-        slidingMenu.setTouchModeAbove(SlidingMenu.TOUCHMODE_MARGIN);
-        slidingMenu.setShadowWidthRes(R.dimen.slidingmenu_shadow_width);
-        slidingMenu.setShadowDrawable(R.drawable.slidingmenu_shadow);
-        slidingMenu.setBehindOffsetRes(R.dimen.slidingmenu_offset);      
-        slidingMenu.setSecondaryShadowDrawable(R.drawable.slidingmenu_shadow_right);        
-        
-        slidingMenu.setFadeDegree(0.35f);
-        slidingMenu.attachToActivity(this, SlidingMenu.SLIDING_WINDOW/* | SlidingMenu.SLIDING_CONTENT*/);
-        //slidingMenu.setBehindWidth(150);
-        
-        //slidingMenu.setMenu(R.layout.slidingmenu);
-        //slidingMenu.setBackgroundDrawable(appDeck.config.app_background_color.getDrawable());
+        mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
         
         if (appDeck.config.leftMenuUrl != null) {
         	leftMenuWebView = new PageWebViewMenu(this, appDeck.config.leftMenuUrl.toString(), PageWebViewMenu.POSITION_LEFT);
         	if (appDeck.config.leftmenu_background_color != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN)
         		leftMenuWebView.setBackground(appDeck.config.leftmenu_background_color.getDrawable());
-        	slidingMenu.setMenu(leftMenuWebView);
+        	mDrawerLeftMenu = (FrameLayout) findViewById(R.id.left_drawer);
+        	mDrawerLeftMenu.addView(leftMenuWebView);
         }
-        if (appDeck.config.rightMenuUrl != null) {
+        /*
+        if (appDeck.config.leftMenuUrl != null) {
         	rightMenuWebView = new PageWebViewMenu(this, appDeck.config.rightMenuUrl.toString(), PageWebViewMenu.POSITION_RIGHT);
-        	if (appDeck.config.rightmenu_background_color != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN)
+        	if (appDeck.config.leftmenu_background_color != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN)
         		rightMenuWebView.setBackground(appDeck.config.rightmenu_background_color.getDrawable());
-        	
-        	/*FrameLayout layout = new FrameLayout(this);
-            FrameLayout.LayoutParams layoutparams=new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT,Gravity.TOP|Gravity.RIGHT);             
-        	layout.addView(rightMenuWebView);*/
-
-            slidingMenu.setSecondaryMenu(rightMenuWebView);
-        }
-        
-   		android.os.Process.setThreadPriority(-20);       
-                
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
-        {
-        	slidingMenu.setOnClosedListener(new OnClosedListener() {
-				@Override
-				public void onClosed() {
-					Log.i("MENU", "onClosed");
-					setEnableHardwareAcceleration(true);
-				}
-			});
-	        slidingMenu.setOnOpenListener(new OnOpenListener() {				
-				@Override
-				public void onOpen() {
-					Log.i("MENU", "onOpen");
-					setEnableHardwareAcceleration(false);
-				}
-			});
-	        slidingMenu.setOnOpenedListener(new OnOpenedListener() {				
-				@Override
-				public void onOpened() {
-					Log.i("MENU", "onOpened");
-					setEnableHardwareAcceleration(false);
-				}
-			});	        
-	        slidingMenu.setOnDragListener(new OnDragListener() {
-				@Override
-				public boolean onDrag(View v, DragEvent event) {
-					Log.i("MENU", "onDrag");
-					if (event.getAction() == DragEvent.ACTION_DRAG_STARTED)
-						setEnableHardwareAcceleration(false);
-					return false;
-				}
-			});
-        }
+        	mDrawerRightMenu = (FrameLayout) findViewById(R.id.right_drawer);
+        	mDrawerRightMenu.addView(rightMenuWebView);
+        }*/
 
         // configure action bar
         appDeck.actionBarHeight = getActionBarHeight();
@@ -281,7 +189,6 @@ public class Loader extends SherlockFragmentActivity {
         
         getSupportActionBar().setDisplayHomeAsUpEnabled(true); // icon on the left of logo 
         getSupportActionBar().setDisplayShowHomeEnabled(true); // make icon + logo + title clickable       
-        //getSupportActionBar().setDisplayUseLogoEnabled(true);
         
 		if (appDeck.config.topbar_color != null)
 			getSupportActionBar().setBackgroundDrawable(appDeck.config.topbar_color.getDrawable());        
@@ -312,14 +219,107 @@ public class Loader extends SherlockFragmentActivity {
 		if (savedInstanceState == null)
 		{
 			loadRootPage(appDeck.config.bootstrapUrl.toString());
-			//loadRootPage("http://testapp.appdeck.mobi/kitchensink_popover.php");
 		}
-		//MobclixFullScreenAdView adview = new MobclixFullScreenAdView(this);
-		//adview.requestAndDisplayAd();		
 
+		/*
+		// widespace
+		
+        // Let's listen to some events and run Splash Ad
+		initWideSpaceAds();		
+		*/
+		
     }
+	
+	public void setLoaderContentView()
+	{
+		setContentView(R.layout.loader);   	
+	}
+
+	/*
+	// widespace
+    private void initWideSpaceAds() {
+    	
+    	// Splash
+
+        // Please use Auto Update and Auto Start false for the splash ad;
+    	adSpaceSplash = new AdSpace(this, SPLASH_SID, false, false);
+    	
+    	adSpaceSplash.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT,
+                LayoutParams.MATCH_PARENT));
+        
+    	adSpaceSplash.setAdEventListener(new AdEventListener() {
+
+			@Override
+			public void onAdClosed(AdSpace adSpace, AdType adType) {
+				// TODO Auto-generated method stub
+				
+			}
+
+			@Override
+			public void onAdClosing(AdSpace adSpace, AdType adType) {
+				// TODO Auto-generated method stub
+				
+			}
+
+			@Override
+			public void onAdLoaded(AdSpace adSpace, AdType adType) {
+				// TODO Auto-generated method stub
+				
+			}
+
+			@Override
+			public void onAdLoading(AdSpace adSpace) {
+				// TODO Auto-generated method stub
+				
+			}
+
+			@Override
+			public void onNoAdRecieved(AdSpace adSpace) {
+				// TODO Auto-generated method stub
+				
+			}
+
+			@Override
+			public void onPrefetchAd(AdSpace adSpace, PrefetchStatus prefetchStatus) {
+				// TODO Auto-generated method stub
+				adSpace.runAd();
+				
+			}
+
+    });
+        
+    	adSpaceSplash.setAdErrorEventListener(adErrorListener);
+        
+    	// panorama
+
+    	//adSpacePanorama = (AdSpace) findViewById(R.id.adPanorama);
+    	//adSpacePanorama.setAdErrorEventListener(adErrorListener);
+
+    	
+        //adSpace.setAdEventListener(adEventListener);
+        //adSpace.setAdErrorEventListener(adErrorListener);
+        //adSpace.setAdAnimationEventListener(adAnimationListener);
+        //adSpace.setAdMediaEventListener(adMediaEventListener);
+        // It is better to pre-fetch the ad and then on the onPrefetchAd event
+        // call the runAd method of the adSpace. Please explore the advanced
+        // demo to see the varieties of implementations of Splash Ad.
+        // For this basic demo we are going to use runAd method.
+        //adSpace.runAd();
+    }	
     
-    boolean isForeground = true;
+    // Please implement this event listener while you are in development mode,
+    // so that you get notification if there is any errors.
+    private AdErrorEventListener adErrorListener = new AdErrorEventListener() {
+
+        @Override
+        public void onFailedWithError(Object sender, ExceptionTypes type, String message,
+                Exception exeception) {
+            Log.d(TAG, "onFailedWithError : error message # " + message);
+        }
+    };    
+    */
+
+	boolean isForeground = true;
     @Override
     protected void onResume()
     {
@@ -357,10 +357,25 @@ public class Loader extends SherlockFragmentActivity {
     	isForeground = false;
     	super.onDestroy();
     }    
+    /*
+    public void forceFullRedraw()
+    {
+		FrameLayout frameLayout = (FrameLayout)findViewById (R.id.loader_container);
+		if (frameLayout != null)
+		{
+			frameLayout.invalidate();
+			frameLayout.refreshDrawableState();
+			this.getWindow().getDecorView().invalidate();
+		}    	
+    }*/
     
     @SuppressWarnings("deprecation")
 	public void initUI()
     {
+    	/*
+    	// enable hardware layer type
+    	slidingMenu.forceLayerType(View.LAYER_TYPE_HARDWARE);
+   	
     	// for smartphone
     	Display display = getWindowManager().getDefaultDisplay();
     	float width = (float)display.getWidth();
@@ -386,34 +401,16 @@ public class Loader extends SherlockFragmentActivity {
     	Log.d("Loader", "screen_width: " + screen_width);
     	Log.d("Loader", "menu width: " + menu_width);
     	
-    	slidingMenu.setSideNavigationWidth((int)menu_width);
+    	//slidingMenu.setSideNavigationWidth((int)menu_width);
     	
+    	// test set in pixel directly
+    	float density = getResources().getDisplayMetrics().density;
+    	slidingMenu.setSideNavigationWidth((int)(appDeck.config.leftMenuWidth * density));
+    	//slidingMenu.setSideNavigationWidth(280);
+    	*/
     	//slidingMenu.setBehindWidth((int)menu_width);
-    	
-    	/*    	Configuration config = getResources().getConfiguration();
-    	int size = config.screenLayout & Configuration.SCREENLAYOUT_SIZE_MASK;
 
-    	// set width of side navigation according to screen layout size
-
-    	if (size == Configuration.SCREENLAYOUT_SIZE_SMALL)
-    	{
-    		slidingMenu.setBehindOffset(60);
-    	}
-
-    	if (size == Configuration.SCREENLAYOUT_SIZE_NORMAL)
-    	{
-    		slidingMenu.setBehindOffset(60);
-    	}
-
-    	if (size == Configuration.SCREENLAYOUT_SIZE_LARGE)
-    	{
-    		slidingMenu.setSideNavigationWidth(350);
-    	}
-
-    	if (size == Configuration.SCREENLAYOUT_SIZE_XLARGE)
-    	{
-    		slidingMenu.setSideNavigationWidth(350);
-    	}*/
+    	//forceFullRedraw();
     }
     
     @Override
@@ -421,14 +418,6 @@ public class Loader extends SherlockFragmentActivity {
         super.onConfigurationChanged(newConfig);
         initUI();
     }
-    
-    
-/*    public PageSwipe getCurrentPageSwipe()
-    {
-    	if (pages != null && pages.size() > 0)
-    		return pages.get(pages.size() - 1);
-    	return null;
-    }*/
     
     ArrayList<WeakReference<AppDeckFragment>> fragList = new ArrayList<WeakReference<AppDeckFragment>>();
     @SuppressWarnings({ "unchecked", "rawtypes" })
@@ -496,7 +485,6 @@ public class Loader extends SherlockFragmentActivity {
     	WeakReference<AppDeckFragment> ref = fragList.get(0);
         return ref.get();
     }
-        
     
     public void progressStart()
     {
@@ -511,13 +499,6 @@ public class Loader extends SherlockFragmentActivity {
         int progress = (Window.PROGRESS_END - Window.PROGRESS_START) / 100 * percent;
         //setSupportProgressBarIndeterminate(true);// ProgressBarIndeterminate
         setSupportProgress(progress);    	
-    	/*
-		if (mProgress == 100)
-		{
-	    	mProgress = 0;
-	        mProgressRunner.run();
-		}
-		mTargetProgress = percent;*/
     }
     
     public void progressStop()
@@ -526,36 +507,9 @@ public class Loader extends SherlockFragmentActivity {
     	
         int progress = (Window.PROGRESS_END - Window.PROGRESS_START);
         //setSupportProgressBarIndeterminate(true);// ProgressBarIndeterminate
-        setSupportProgress(progress);    	
-    	
-    	/*
-    	mTargetProgress = 100;
-    	mProgressRunner.run();*/
+        setSupportProgress(progress);
+        
     }
-
-    /*
-    public void setProgress(View origin, Boolean indeterminate, int percent)
-    {
-    	if (indeterminate)
-    	{
-    		mProgress = 0;
-	        mProgressRunner.run();    		
-    		mTargetProgress = 10;
-    		//setSupportProgressBarIndeterminateVisibility(true);
-    		//setSupportProgressBarVisibility(false);
-    	} else {
-    		//setSupportProgressBarIndeterminateVisibility(false);
-    		//setSupportProgressBarVisibility(true);
-    		if (mProgress == 100)
-    		{
-    	    	mProgress = 0;
-    	        mProgressRunner.run();
-    		}
-    		mTargetProgress = 10 + (percent / 10) * 9;
-    	}
-    }*/
-    
-    //private int backStackIdentifier = -1;
     
     protected void prepareRootPage()
     {
@@ -564,9 +518,12 @@ public class Loader extends SherlockFragmentActivity {
     	
     	// remove all current menu items
     	setMenuItems(new PageMenuItem[0]);
+    	
     	// make sure user see content
-    	if (slidingMenu != null)
-    		slidingMenu.showContent();
+    	if (mDrawerLayout != null)
+    	{
+    		mDrawerLayout.closeDrawers();
+    	}
   	
     }
     
@@ -594,7 +551,7 @@ public class Loader extends SherlockFragmentActivity {
     	return false;
     }
     
-	public int findUnusedId(/*ViewGroup container, */int fID) {
+	public int findUnusedId(int fID) {
 	    while( this.findViewById(android.R.id.content).findViewById(++fID) != null );
 	    return fID;
 	}    
@@ -626,7 +583,6 @@ public class Loader extends SherlockFragmentActivity {
     		createIntent(PAGE_URL, absoluteURL);
     		return -1;
     	}		
-		//absoluteURL = "http://www.play3-live.com/__appli_android/smartphones/left_menu.php";
 		AppDeckFragment fragment = initPageFragment(absoluteURL);
     	
     	/*if (fragment.screenConfiguration != null && fragment.screenConfiguration.isPopUp)
@@ -661,8 +617,7 @@ public class Loader extends SherlockFragmentActivity {
     	fragmentTransaction.add(R.id.loader_container, fragment, "AppDeckFragment");
     	
     	//fragmentTransaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
-    	return fragmentTransaction.commitAllowingStateLoss();    	
-
+    	return fragmentTransaction.commitAllowingStateLoss();
     }    
 
     public AppDeckFragment initPageFragment(String absoluteURL)
@@ -680,7 +635,7 @@ public class Loader extends SherlockFragmentActivity {
     	PageSwipe pageSwipe = PageSwipe.newInstance(absoluteURL);
     	pageSwipe.loader = this;
     	pageSwipe.setRetainInstance(true);
-    	pageSwipe.screenConfiguration = appDeck.config.getConfiguration(absoluteURL);
+    	pageSwipe.screenConfiguration = config;//appDeck.config.getConfiguration(absoluteURL);
     	return pageSwipe;
     }
     
@@ -722,11 +677,25 @@ public class Loader extends SherlockFragmentActivity {
     	    	
     	fragmentTransaction.commitAllowingStateLoss();
     	
+    	/*
+    	// widespace
+	    if (adSpaceSplash != null)
+	    {
+	    	adSpaceSplash.bringToFront();
+	    	adSpaceSplash.requestLayout();
+	    }
+	    if (adSpacePanorama != null)
+	    {
+	    	adSpacePanorama.bringToFront();
+	    	adSpacePanorama.requestLayout();
+	    }
+	    */    
+	    
     	return 0;
     }
 
     public boolean pushFragmentAnimation(AppDeckFragment fragment)
-    {
+    {    	
     	AppDeckFragment current = getCurrentAppDeckFragment();
     	AppDeckFragment previous = getPreviousAppDeckFragment(current);
 
@@ -795,13 +764,12 @@ public class Loader extends SherlockFragmentActivity {
 		{
 			Log.i("API", "**SHARE**");
 					
-			String shareTitle = call.param.path("title").textValue();
-			String shareUrl = call.param.path("url").textValue();;
-			String shareImageUrl = call.param.path("imageurl").textValue();;
+			String shareTitle = call.param.getString("title");
+			String shareUrl = call.param.getString("url");
+			String shareImageUrl = call.param.getString("imageurl");
 
-			if (call.appDeckFragment != null)
-				call.appDeckFragment.loader.share(shareTitle, shareUrl, shareImageUrl);
-			
+			share(shareTitle, shareUrl, shareImageUrl);
+						
 			return true;
 		}		
 
@@ -809,8 +777,8 @@ public class Loader extends SherlockFragmentActivity {
 		{
 			Log.i("API", "**PREFERENCES GET**");
 					
-			String name = call.param.path("name").textValue();
-			JsonNode defaultValue = call.param.path("value");
+			String name = call.param.getString("name");
+			AppDeckJsonNode defaultValue = call.param.get("value");
 
 		    SharedPreferences prefs = getSharedPreferences(AppDeckApplication.class.getSimpleName(), Context.MODE_PRIVATE);
 		    
@@ -818,13 +786,14 @@ public class Loader extends SherlockFragmentActivity {
 		    String finalValueJson = prefs.getString(key, null);
 		    
 		    if (finalValueJson == null)
-		    	call.setResult(defaultValue);
+		    	call.setResult(defaultValue.toJsonString());
 		    else
-		    {
+		    	call.setResult(finalValueJson);
+		    /*{
 				try {
 					ObjectMapper mapper = new ObjectMapper();
 					JsonNode json = mapper.readValue(finalValueJson, JsonNode.class);
-					call.setResult(json);	
+					call.setResult(json);
 				} catch (JsonParseException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -835,19 +804,7 @@ public class Loader extends SherlockFragmentActivity {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
-		    }
-		    /*
-		    if (registrationId.isEmpty()) {
-		        Log.i(TAG, "Registration not found.");
-		        return "";
-		    }
-		    
-		    if (registrationId.isEmpty()) {		    
-		    editor.putInt(PROPERTY_APP_VERSION, appVersion);
-			
-			if (call.appDeckFragment != null)
-				call.appDeckFragment.loader.share(shareTitle, shareUrl, shareImageUrl);*/
-			
+		    }*/			
 			return true;
 		}		
 		
@@ -855,27 +812,13 @@ public class Loader extends SherlockFragmentActivity {
 		{
 			Log.i("API", "**PREFERENCES SET**");
 					
-			String name = call.param.path("name").textValue();
-			String finalValue = "";//call.param.path("value").toString();
-
-			try {
-				ObjectMapper mapper = new ObjectMapper();
-				finalValue = mapper.writeValueAsString(call.param.path("value"));
-			} catch (JsonParseException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (JsonMappingException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}			
+			String name = call.param.getString("name");
+			AppDeckJsonNode finalValue = call.param.get("value");
 			
 		    SharedPreferences prefs = getSharedPreferences(AppDeckApplication.class.getSimpleName(), Context.MODE_PRIVATE);
 		    SharedPreferences.Editor editor = prefs.edit();
 		    String key = "appdeck_preferences_json1_" + name;
-		    editor.putString(key, finalValue);
+		    editor.putString(key, finalValue.toJsonString());
 	        editor.commit();		    
 
 		    call.setResult(finalValue);
@@ -887,8 +830,8 @@ public class Loader extends SherlockFragmentActivity {
 		{
 			Log.i("API", "**PHOTO BROWSER**");
 			// only show image browser if there are images
-			JsonNode images = call.param.path("images");
-			if (images.isArray() && images.size() > 0)
+			AppDeckJsonArray images = call.param.getArray("images");
+			if (images.length() > 0)
 			{
 				PhotoBrowser photoBrowser = PhotoBrowser.newInstance(call.param);
 				photoBrowser.loader = this;
@@ -905,8 +848,8 @@ public class Loader extends SherlockFragmentActivity {
 		{
 			Log.i("API", "**LOAD APP**");
 			
-			String jsonUrl = call.param.path("url").textValue();
-			boolean clearCache = call.param.path("cache").booleanValue();
+			String jsonUrl = call.param.getString("url");
+			boolean clearCache = call.param.getBoolean("cache");
 			
 			// clear cache if asked
 			if (clearCache)
@@ -915,13 +858,19 @@ public class Loader extends SherlockFragmentActivity {
 			// dowload json data, put it in cache, lauch app
 			AsyncHttpClient client = new AsyncHttpClient();
 			client.get(jsonUrl, new AsyncHttpResponseHandler() {
-			    @Override
-			    public void onSuccess(String response) {
-			    	appDeck.cache.storeInCache(this.getRequestURI().toString(), response);
-			    	Intent i = new Intent(Loader.this, Loader.class);
-			    	i.putExtra(JSON_URL, this.getRequestURI().toString());
-			    	startActivity(i);			    	
-			    }
+				
+				@Override
+				public void onSuccess(int statusCode, Header[] headers, byte[] content) {
+			    	if (statusCode != 200)
+			    	{
+						appDeck.cache.storeInCache(this.getRequestURI().toString(), headers, content);
+				    	Intent i = new Intent(Loader.this, Loader.class);
+				    	i.putExtra(JSON_URL, this.getRequestURI().toString());
+				    	startActivity(i);
+			    	}
+			    	else
+			    		Log.e(TAG, "failed to fetch config: "+this.getRequestURI().toString());
+				}
 			});
 			
 			return true;
@@ -936,7 +885,7 @@ public class Loader extends SherlockFragmentActivity {
 		if (call.command.equalsIgnoreCase("pageroot"))
 		{
 			Log.i("API", "**PAGE ROOT**");
-			String absoluteURL = call.smartWebView.resolve(call.param.textValue());
+			String absoluteURL = ((XSmartWebView)call.smartWebView).resolve(call.input.getString("param"));
 			this.loadRootPage(absoluteURL);			
 			return true;
 		}
@@ -944,7 +893,7 @@ public class Loader extends SherlockFragmentActivity {
 		if (call.command.equalsIgnoreCase("pagerootreload"))
 		{
 			Log.i("API", "**PAGE ROOT RELOAD**");
-			String absoluteURL = call.smartWebView.resolve(call.param.textValue());
+			String absoluteURL = ((XSmartWebView)call.smartWebView).resolve(call.input.getString("param"));
 			this.loadRootPage(absoluteURL);
 	        if (leftMenuWebView != null)
 	        	leftMenuWebView.reload();
@@ -956,7 +905,7 @@ public class Loader extends SherlockFragmentActivity {
 		if (call.command.equalsIgnoreCase("pagepush"))
 		{
 			Log.i("API", "**PAGE PUSH**");
-			String absoluteURL = call.smartWebView.resolve(call.param.textValue());
+			String absoluteURL = ((XSmartWebView)call.smartWebView).resolve(call.input.getString("param"));
 			this.loadPage(absoluteURL);			
 			return true;
 		}
@@ -977,19 +926,19 @@ public class Loader extends SherlockFragmentActivity {
 
 		if (call.command.equalsIgnoreCase("slidemenu"))
 		{
-			String command = call.param.path("command").textValue();
-			String position = call.param.path("position").textValue();
-			
+			String command = call.param.getString("command");
+			String position = call.param.getString("position");
+
 			if (command.equalsIgnoreCase("open"))
 			{
-				if (position.equalsIgnoreCase("left"))
-					this.slidingMenu.showMenu();
-				if (position.equalsIgnoreCase("right"))
-					this.slidingMenu.showSecondaryMenu();
+				if (position.equalsIgnoreCase("left") && mDrawerLeftMenu != null)
+					mDrawerLayout.openDrawer(mDrawerLeftMenu);
+				if (position.equalsIgnoreCase("right") && mDrawerRightMenu != null)
+					mDrawerLayout.openDrawer(mDrawerRightMenu);
 				if (position.equalsIgnoreCase("main"))
-					this.slidingMenu.showContent();
+					mDrawerLayout.closeDrawers();
 			} else {
-				this.slidingMenu.showContent();
+				mDrawerLayout.closeDrawers();
 			}
 		}	
 		
@@ -1025,9 +974,18 @@ public class Loader extends SherlockFragmentActivity {
     public void onBackPressed() {
     	
     	// close menu ?
-        if (slidingMenu != null && slidingMenu.isMenuShowing()) {
-            slidingMenu.toggle();
-            return;
+        if (mDrawerLayout != null)
+        {
+        	if (mDrawerLeftMenu != null && mDrawerLayout.isDrawerOpen(mDrawerLeftMenu))
+        	{
+        		mDrawerLayout.closeDrawer(mDrawerLeftMenu);
+        		return;
+        	}
+        	if (mDrawerRightMenu != null && mDrawerLayout.isDrawerOpen(mDrawerRightMenu))
+        	{
+        		mDrawerLayout.closeDrawer(mDrawerRightMenu);
+        		return;
+        	}        	
         }
 
         // current fragment can go back ?
@@ -1050,48 +1008,30 @@ public class Loader extends SherlockFragmentActivity {
         	return;
         }
         
-/*        // page stacked ?
-        FragmentManager fragmentManager = getSupportFragmentManager();
-        if (fragmentManager.getBackStackEntryCount() > 1)
-        {
-        	fragmentManager.popBackStack();
-        	return;
-        }*/
-        
         finish();      
 
     }
     
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if ( keyCode == KeyEvent.KEYCODE_MENU && this.slidingMenu != null) {
-            this.slidingMenu.toggle();
+
+        if (keyCode == KeyEvent.KEYCODE_MENU && mDrawerLayout != null) {
+        	if (mDrawerLeftMenu != null)
+        		mDrawerLayout.openDrawer(mDrawerLeftMenu);
+        	else if (mDrawerRightMenu != null)
+        		mDrawerLayout.openDrawer(mDrawerRightMenu);        	
             return true;
         }
+
         return super.onKeyDown(keyCode, event);
     }
     
-/*    
-    public void setAsHome()
-    {
-    	Page parent = (Page)getParent();
-    	if (parent != null)
-    	{
-    		parent.setAsHome();
-    		parent.finish();
-    	}
-    }
-        */
     public int getActionBarHeight()
     {
     	int actionBarHeight = 0;
         TypedValue tv = new TypedValue();
         if (getTheme().resolveAttribute(android.R.attr.actionBarSize, tv, true))
             actionBarHeight = TypedValue.complexToDimensionPixelSize(tv.data,getResources().getDisplayMetrics());
-
-/*        if (actionBarHeight == 0 && getTheme().resolveAttribute(com.actionbarsherlock.R.attr.actionBarSize, tv, true)){
-                actionBarHeight = TypedValue.complexToDimensionPixelSize(tv.data,getResources().getDisplayMetrics());
-        }*/
         
         if (actionBarHeight != 0)
         	return actionBarHeight;
@@ -1101,9 +1041,8 @@ public class Loader extends SherlockFragmentActivity {
        if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.HONEYCOMB){
           if (getTheme().resolveAttribute(android.R.attr.actionBarSize, tv, true))
             actionBarHeight = TypedValue.complexToDimensionPixelSize(tv.data,getResources().getDisplayMetrics());
-       }/* else if(getTheme().resolveAttribute(com.actionbarsherlock.R.attr.actionBarSize, tv, true)) {
-            actionBarHeight = TypedValue.complexToDimensionPixelSize(tv.data,getResources().getDisplayMetrics());
-       }*/
+       }
+       
        return actionBarHeight;
     }
 
@@ -1117,7 +1056,6 @@ public class Loader extends SherlockFragmentActivity {
     		}
     	this.menuItems = menuItems;
     	supportInvalidateOptionsMenu();
-//    	invalidateOptionsMenu();
     }
     
     @Override
@@ -1145,8 +1083,13 @@ public class Loader extends SherlockFragmentActivity {
 
     	if (idx == android.R.id.home)
     	{
-    		if (slidingMenu != null)
-    			slidingMenu.toggle();
+    		if (mDrawerLayout != null)
+    		{
+	        	if (mDrawerLeftMenu != null)
+	        		mDrawerLayout.openDrawer(mDrawerLeftMenu);
+	        	else if (mDrawerRightMenu != null)
+	        		mDrawerLayout.openDrawer(mDrawerRightMenu);
+    		}
     		return true;
     	}
     	
@@ -1162,30 +1105,8 @@ public class Loader extends SherlockFragmentActivity {
 	    		return true;				
 			}
 		}
-    	/*
-    	if (idx >= 0 && idx <= menuItems.length)
-    	{
-    		PageMenuItem pageMenuItem = menuItems[idx];
-    		AppDeckFragment fragment = getCurrentAppDeckFragment();
-    		fragment.loadUrl(pageMenuItem.content);
-    		return true;    	
-    	}*/
-    	
 		return super.onOptionsItemSelected(item);
     }    
-
-	@SuppressLint("InlinedApi")
-	public void setEnableHardwareAcceleration(Boolean enabled)
-	{
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB)
-        	return;
-
-        //enabled = true;
-        
-        int layerType = (enabled ? View.LAYER_TYPE_HARDWARE : View.LAYER_TYPE_NONE);
-        
-        slidingMenu.forceLayerType(layerType);
-	}
 	
 	public void share(String title, String url, String imageURL)
 	{
@@ -1216,6 +1137,10 @@ public class Loader extends SherlockFragmentActivity {
         .cacheInMemory(true)
         .cacheOnDisc(true)
         .build();
+        
+        // patch image URL
+        if (imageURL.startsWith("//"))
+        	imageURL = "http:"+imageURL;
         
         // Load image, decode it to Bitmap and return Bitmap to callback
         appDeck.imageLoader.loadImage(imageURL, options, new sharingImageLoadingListener(imageURL, sharingIntent));
@@ -1317,6 +1242,13 @@ public class Loader extends SherlockFragmentActivity {
 	
 	public void showPopUp(AppDeckFragment origin, String url)
 	{
+		Log.w(TAG, "PopUp not suported on Android Platform, use push instead");
+		loadPage(url);		
+	}
+	
+	/*
+	public void showPopUp(AppDeckFragment origin, String url)
+	{
 		if (origin != null)
 			origin.loader.cancelSubViews();
 		Intent intent = new Intent(this, PopUp.class);
@@ -1340,7 +1272,7 @@ public class Loader extends SherlockFragmentActivity {
 		//getActivity().getWindow().setFlags(android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN, android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN);
    		
 	}
-	
+	*/
 	protected void createIntent(String type, String absoluteURL)
 	{
 		cancelSubViews();
@@ -1386,13 +1318,14 @@ public class Loader extends SherlockFragmentActivity {
             return;
     	}
     	
+/*
     	// popup url
     	url = extras.getString(POP_UP_URL);
     	if (url != null && !url.isEmpty())
     	{
     		showPopUp(null, url);
     		return;
-    	}
+    	}*/
     	
     }	
 	

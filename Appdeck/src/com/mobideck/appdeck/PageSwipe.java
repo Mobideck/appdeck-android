@@ -17,6 +17,7 @@ import android.support.v4.app.FragmentTransaction;
 import android.support.v4.view.PagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.support.v4.view.ViewPager.OnPageChangeListener;
+import android.support.v4.widget.DrawerLayout;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -89,6 +90,7 @@ public class PageSwipe extends AppDeckFragment {
         // Inflate the layout for this fragment
     	//pager = new CustomViewPager(getActivity());
     	pager = new ViewPager(getActivity());
+    	pager.setLayerType(View.LAYER_TYPE_HARDWARE, null);
     	pager.setOffscreenPageLimit(2);
     	pager.setId(loader.findUnusedId(0x1000));
     	adapter = new PageSwipeAdapter(getChildFragmentManager(), this);
@@ -282,8 +284,12 @@ public class PageSwipe extends AppDeckFragment {
     public void onDetach() {
     	super.onDetach();
     	// we always set sliding menu as enabled in case pager disable it
-    	if (loader.slidingMenu != null)
-    		loader.slidingMenu.setSlidingEnabled(true);
+    	
+    	if (loader.mDrawerLayout != null)
+    	{
+    		loader.mDrawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED);
+    	}
+    	
     }
 
     @Override

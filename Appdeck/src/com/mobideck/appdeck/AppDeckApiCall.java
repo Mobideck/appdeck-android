@@ -1,53 +1,63 @@
 package com.mobideck.appdeck;
 
 import java.io.IOException;
+import java.util.Map;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.JSONTokener;
+import org.xwalk.core.XWalkJavascriptResult;
+import org.xwalk.core.XWalkView;
+
+import android.util.Log;
 import android.webkit.JsPromptResult;
 import android.webkit.WebView;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 public class AppDeckApiCall {
 
-	public WebView webview;
-	public SmartWebView smartWebView;
+	//public WebView webview;
+	public XWalkView webview;
+	//public SmartWebView smartWebView;
+	//public XSmartWebView smartWebView;
+	public Object smartWebView;
 	public String command;
 	public String eventID;
 	public String inputJSON;
-	public JsonNode input;
-	public JsonNode param;
+	public JSONObject inputObject;
+	public JSONObject paramObject;
+	public AppDeckJsonNode input;
+	public AppDeckJsonNode param;
+	
 	public String resultJSON;
 	//@property (strong, nonatomic) id result;
 	public Boolean success;
 	public Boolean callBackSend;
-	public JsPromptResult result;
+	//public JsPromptResult result;
+	public XWalkJavascriptResult result;
 	public AppDeckFragment appDeckFragment;
 	
 	protected boolean postponeResult = false;
 	
 	protected boolean resultSent = false;
 	
-	public AppDeckApiCall(String command, String inputJSON, JsPromptResult result)
+	public AppDeckApiCall(String command, String inputJSON, XWalkJavascriptResult/*JsPromptResult*/ result)
 	{
 		this.command = command;
 		this.inputJSON = inputJSON;
 		this.result = result;
 		input = null;
 		try {
-			ObjectMapper mapper = new ObjectMapper();
-			input = mapper.readValue(inputJSON, JsonNode.class);
-			eventID = input.path("eventid").textValue();
-			param = input.path("param");
-		} catch (JsonParseException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (JsonMappingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
+			//JSONArray inputArray = (JSONArray) new JSONTokener(inputJSON).nextValue();
+			inputObject = (JSONObject) new JSONTokener(inputJSON).nextValue();
+			input = new AppDeckJsonNode(inputObject);
+			param = new AppDeckJsonNode(paramObject);
+			eventID = input.getString("eventid", "false");
+			Object obj = inputObject.opt("param");
+			if (obj instanceof JSONObject)
+				param = new AppDeckJsonNode((JSONObject)obj);
+			
+		} catch (JSONException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -70,19 +80,10 @@ public class AppDeckApiCall {
 	
 	public void setResult(Object res)
 	{
-		try {
-			ObjectMapper mapper = new ObjectMapper();
-			resultJSON = mapper.writeValueAsString(res);
-		} catch (JsonParseException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (JsonMappingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		JSONArray result = new JSONArray();
+		result.put(res);
+		//JSONObject jsonObj = (JSONObject) JSONObject.wrap(res);
+		resultJSON = result.toString();		
 	}
 	
 	public void postponeResult()
@@ -105,9 +106,10 @@ public class AppDeckApiCall {
 		resultSent = true;
 		String rs = (r == true ? "1" : "0");
 		if (resultJSON == null)
-			resultJSON = "null";
-		String ret = "{\"success\": \""+rs+"\", \"result\": ["+resultJSON+"]}";
-		result.confirm(ret);
+			resultJSON = "[null]";
+		String ret = "{\"success\": \""+rs+"\", \"result\": "+resultJSON+"}";
+		//result.confirm(ret);
+		result.confirmWithResult(ret);
 	}	
 	
 	protected void finalize() throws Throwable

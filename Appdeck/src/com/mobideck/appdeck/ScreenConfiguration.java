@@ -1,11 +1,11 @@
 package com.mobideck.appdeck;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.mobideck.appdeck.R;
-import com.fasterxml.jackson.databind.JsonNode;
 
 public class ScreenConfiguration {
 
@@ -45,10 +45,9 @@ public class ScreenConfiguration {
 	
 	private String readString(AppDeckJsonNode node, String name)
 	{
-		AppDeckJsonNode value = node.path(name);
-		if (value.isMissingNode())
+		String text = node.getString(name, null);
+		if (text == null)
 			return null;
-		String text = value.textValue();
 		if (text.equalsIgnoreCase("") == true)
 			return null;
 		return text;
@@ -61,18 +60,19 @@ public class ScreenConfiguration {
 		if (logo != null)
 			logo = baseUrl.resolve(logo).toString(); 
 		type = readString(node, "type");
-		isPopUp = node.path("popup").booleanValue();
-		enableShare = node.path("enable_share").booleanValue();
-		ttl = 600;		
-		if (node.path("ttl").isInt())
-			ttl = node.path("ttl").intValue();
+		isPopUp = node.getBoolean("popup");
+		enableShare = node.getBoolean("enable_share");
+		ttl = 600;
 		
-		AppDeckJsonNode urlsNode = node.path("urls"); 
-		if (urlsNode.isArray())
+		if (node.isInt("ttl"))
+			ttl = node.getInt("ttl");
+		
+		AppDeckJsonArray urlsNode = node.getArray("urls"); 
+		if (urlsNode.length() > 0)
 		{
-			urlRegexp = new Pattern[urlsNode.size()];
-			for (int i = 0; i < urlsNode.size(); i++) {
-				String regexp = urlsNode.path(i).textValue();
+			urlRegexp = new Pattern[urlsNode.length()];
+			for (int i = 0; i < urlsNode.length(); i++) {
+				String regexp = urlsNode.getString(i);
 				Pattern p = Pattern.compile(regexp, Pattern.CASE_INSENSITIVE);
 				urlRegexp[i] = p;
 			}
@@ -88,7 +88,23 @@ public class ScreenConfiguration {
 			Matcher m = regexp.matcher(absoluteURL);
 			if (m.find())
 				return true;
-		}		
+		}
+		try {
+			URI uri = new URI(absoluteURL);
+			String path = uri.getPath();
+			if (path != null)
+			{
+				for (int i = 0; i < urlRegexp.length; i++) {
+					Pattern regexp = urlRegexp[i];
+					Matcher m = regexp.matcher(path);
+					if (m.find())
+						return true;
+				}				
+			}
+		} catch (URISyntaxException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		return false;
 	}
 	

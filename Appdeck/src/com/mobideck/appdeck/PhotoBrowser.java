@@ -14,13 +14,10 @@ import android.support.v4.app.FragmentTransaction;
 import android.support.v4.view.ViewPager;
 import android.support.v4.view.ViewPager.OnPageChangeListener;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import com.actionbarsherlock.view.Menu;
-import com.actionbarsherlock.view.MenuInflater;
-import com.actionbarsherlock.view.MenuItem;
 import com.mobideck.appdeck.R;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.nostra13.universalimageloader.core.listener.SimpleImageLoadingListener;
 
 public class PhotoBrowser extends AppDeckFragment {
@@ -48,14 +45,14 @@ public class PhotoBrowser extends AppDeckFragment {
    	
    	AppDeckFragment origin;
    	
-	public static PhotoBrowser newInstance(/*String absoluteURL, */JsonNode config)
+	public static PhotoBrowser newInstance(AppDeckJsonNode config)
 	{
 		PhotoBrowser fragment = new PhotoBrowser();
 		
-		JsonNode images = config.path("images");
-		String bgcolor = config.path("bgcolor").textValue();
-		int startIndex = config.path("startIndex").intValue();
-		int nbPhoto = images.size();
+		AppDeckJsonArray images = config.getArray("images");
+		String bgcolor = config.getString("bgcolor");
+		int startIndex = config.getInt("startIndex");
+		int nbPhoto = images.length();
 
 		String url[] = new String[nbPhoto];
 		String thumbnail[] = new String[nbPhoto];
@@ -63,9 +60,10 @@ public class PhotoBrowser extends AppDeckFragment {
 		
 		for (int i = 0; i < nbPhoto; i++)
 		{
-			url[i] = images.path(i).path("url").textValue();
-			thumbnail[i] = images.path(i).path("thumbnail").textValue();
-			caption[i] = images.path(i).path("caption").textValue(); 		
+			AppDeckJsonNode image = images.getNode(i);
+			url[i] = image.getString("url");
+			thumbnail[i] = image.getString("thumbnail");
+			caption[i] = image.getString("caption"); 		
 		}
 		
 		Bundle args = new Bundle();
@@ -175,8 +173,9 @@ public class PhotoBrowser extends AppDeckFragment {
     @Override
     public void onPause() {
     	super.onPause();
-    	
+    	/*
     	loader.slidingMenu.setSlidingEnabled(true);
+    	*/
     	loader.getSupportActionBar().show();
     }
 

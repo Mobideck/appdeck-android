@@ -3,19 +3,17 @@ package com.mobideck.appdeck;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.google.android.gms.analytics.GoogleAnalytics;
+import com.google.android.gms.analytics.HitBuilders;
+import com.google.android.gms.analytics.Tracker;
+
 import android.content.Context;
 
-import com.google.analytics.tracking.android.Fields;
-import com.google.analytics.tracking.android.GoogleAnalytics;
-import com.google.analytics.tracking.android.MapBuilder;
-import com.google.analytics.tracking.android.Tracker;
-
-public class GA {
-
+public class GA
+{
+	
 	AppDeck appDeck;
 	
-	//String[] trackers; 
-
 	GoogleAnalytics ga;
 	
 	List<Tracker> trackers;
@@ -27,19 +25,12 @@ public class GA {
 		appDeck = AppDeck.getInstance();
 		trackers = new ArrayList<Tracker>();
 		ga = GoogleAnalytics.getInstance(context);
-		//trackers[0] = globalTracker;		
 	}
 	
 	public void addTracker(String trackerID)
 	{
-		Tracker tracker = ga.getTracker(trackerID);
-		
-		tracker.set(Fields.customDimension(1), appDeck.packageName);
-		if (appDeck.config.app_api_key != null)
-			tracker.set(Fields.customDimension(2), appDeck.config.app_api_key);
-		else
-			tracker.set(Fields.customDimension(2), "none");
-		
+		Tracker tracker = ga.newTracker(trackerID);
+				
 		trackers.add(tracker);
 	}
 	
@@ -49,27 +40,40 @@ public class GA {
 		for (int i = 0; i < trackers.size(); i++) {
 			Tracker tracker = trackers.get(i);
 
-			tracker.send(MapBuilder
-					  .createAppView()
-					  .set(Fields.SCREEN_NAME, url)
-					  .build()
-					);
+			tracker.setScreenName(url);
+
+			// get api key
+			String api_key = appDeck.config.app_api_key;
+			if (api_key == null)
+				api_key = "none";
 			
+	        // Send the custom dimension value with a screen view.
+	        // Note that the value only needs to be sent once.
+			tracker.send(new HitBuilders.AppViewBuilder()
+	            .setCustomDimension(1, appDeck.packageName)
+	            .setCustomDimension(2, api_key)
+	            .build()
+	        );
+						
 		}	
 	}
 	
 
 	public void event(String category, String action, String label, long value)
 	{
-		for (int i = 0; i < trackers.size(); i++) {
+		for (int i = 0; i < trackers.size(); i++)
+		{
 			Tracker tracker = trackers.get(i);
 
-			tracker.send(MapBuilder
-			    .createEvent(category, action, label, value)
-			    .build()
-			);
-			
-		}	
+	        // Build and send an Event.
+			tracker.send(new HitBuilders.EventBuilder()
+	            .setCategory(category)
+	            .setAction(action)
+	            .setLabel(label)
+	            .setValue(value)
+	            .build());
+
+		}
 	}
 	
 	

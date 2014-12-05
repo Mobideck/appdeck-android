@@ -1,0 +1,266 @@
+// api call helper
+
+function appDeckAPICall(command, param, onAPISuccess, onAPIError)
+{
+    var eventid = false;
+    if (!(typeof(onAPISuccess) === 'undefined' && typeof(onAPIError) === 'undefined'))
+        eventid = "appdeck_" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    if (eventid)
+    {
+        var listener = function(e) {
+            if (e.detail.type == "success" && typeof(onAPISuccess) !== 'undefined')
+                onAPISuccess.apply(onAPISuccess, e.detail.params);
+            if (e.detail.type == "error" && typeof(onAPIError) !== 'undefined')
+                onAPIError.apply(onAPIError, e.detail.params);
+            document.removeEventListener(eventid, listener, false);
+        };
+        document.addEventListener(eventid, listener, false);
+    }
+    // value format: {success: true/false, result: result}
+    var value = JSON.parse(window.prompt('appdeckapi:' + command, JSON.stringify({param: param, eventid: eventid})));
+    //alert(window.prompt('appdeckapi:' + command, JSON.stringify({param: param, eventid: eventid})));
+    return value.result[0];
+}
+
+// catch console
+
+(function (c) {
+    "use strict";
+    var oldInfo = c.info;
+    var oldLog = c.log;
+    var oldwarn = c.warn;
+    var oldError = c.error;
+
+    c.info = function () {
+        var args = Array.prototype.slice.call(arguments);
+        for (var k = 0; k < args.length; k++)
+            appDeckAPICall("debug", args[k]);
+        return oldLog.apply(c, args);
+    };
+    c.log = function () {
+        var args = Array.prototype.slice.call(arguments);
+        for (var k = 0; k < args.length; k++)
+            appDeckAPICall("info", args[k]);
+        return oldLog.apply(c, args);
+    };
+    c.warn = function () {
+        var args = Array.prototype.slice.call(arguments);
+        for (var k = 0; k < args.length; k++)
+            appDeckAPICall("warning", args[k]);
+        return oldLog.apply(c, args);
+    };
+    c.error = function () {
+        var args = Array.prototype.slice.call(arguments);
+        for (var k = 0; k < args.length; k++)
+            appDeckAPICall("error", args[k]);
+        return oldLog.apply(c, args);
+    };
+}(window.console));
+
+// catch javascript error
+
+var gOldOnError = window.onerror;
+window.onerror = function myErrorHandler(errorMsg, url, lineNumber) {
+    console.error("Error: " + errorMsg + "\nurl: " + url + "\nline #: " + lineNumber);
+    if (gOldOnError)
+        return gOldOnError(errorMsg, url, lineNumber);
+    return false;
+};
+
+// meta observer
+
+if (typeof(window.WebKitMutationObserver) != "undefined")
+{
+    //var MutationObserver = MutationObserver || WebKitMutationObserver || MozMutationObserver;
+    var obs = new WebKitMutationObserver(function(mutations, observer) {
+        // look through all mutations that just occured
+        var buttonUpdated = false;
+        var previousNextUpdated = false;
+        mutations.forEach(function(mutation) {
+            Array.prototype.map.call(mutation.addedNodes, function(addedNode) {
+                if (addedNode.name == "appdeck-menu-entry")
+                    buttonUpdated = true;
+                if (addedNode.name == "appdeck-next-page" || addedNode.name == "next-page" ||
+                    addedNode.name == "appdeck-previous-page" || addedNode.name == "previous-page")
+                    previousNextUpdated = true;
+
+            });
+        });
+        if (buttonUpdated)
+            app.refreshTopMenu();
+        if (previousNextUpdated)
+            refreshPreviousNextPage();
+    });
+
+    // have the observer observe foo for changes in children
+    obs.observe(document.head, {
+        attributes: true,
+        childList: true
+    });
+}
+
+var helper =
+{
+    addinhistory: function(url)
+    {
+        var desired_url = 'http://testapp.appdeck.mobi/mytest3.php';
+        var current_url = window.location.href;
+        window.history.replaceState({}, '', desired_url);
+        window.history.replaceState({}, '', current_url);
+    },
+
+    hasClass: function (ele,cls)
+    {
+        return ele.className.match(new RegExp('(\\s|^)'+cls+'(\\s|$)'));
+    },
+
+    addClass: function (ele,cls)
+    {
+        if (!this.hasClass(ele,cls)) ele.className += " "+cls;
+    },
+
+    removeClass: function (ele,cls)
+    {
+        if (hasClass(ele,cls)) {
+            var reg = new RegExp('(\\s|^)'+cls+'(\\s|$)');
+            ele.className=ele.className.replace(reg,' ');
+        }
+    }
+
+};
+
+//appDeckAPICall("ping", "toto", function (value) { console.log("OK: "+value); }, function (msg) { console.log("Error: "+msg); });
+var app =
+{
+    helper: helper,
+
+    methode: function() {
+        alert("Attributs: ");
+    },
+
+    addTopMenuButton: function (icon, link)
+    {
+        //name="appdeck-menu-entry" content="javascript:showdate();" icon="http://appdata.static.appdeck.mobi/default/icons/cancel.png" type="button"
+        var button = document.createElement('meta');
+        button.setAttribute("type", "button");
+        button.setAttribute("name", "appdeck-menu-entry");
+        button.setAttribute("content", link);
+        button.setAttribute("icon", icon);
+        document.getElementsByTagName('head')[0].appendChild(button);
+    },
+
+    refreshTopMenu: function()
+    {
+        var entries = [];
+        Array.prototype.forEach.call(document.getElementsByTagName('meta'), function(meta) {
+            if (meta.name == 'appdeck-menu-entry')
+            {
+                var entry = {};
+                for (var k = 0; k < meta.attributes.length; k++)
+                {
+                    var attr = meta.attributes[k];
+                    if(attr.name != 'class')
+                        entry[attr.name] = attr.value;
+                }
+                entries.push(entry);
+        }
+        });
+        appDeckAPICall("menu", entries);
+    },
+
+    refreshPreviousNextPage : function()
+    {
+        var previous_page = false;
+        var next_page = false;
+        Array.prototype.forEach.call(document.getElementsByTagName('meta'), function(meta) {
+            if (meta.name == 'appdeck-previous-page' || meta.name == 'previous-page')
+                previous_page = meta.content;
+            if (meta.name == 'appdeck-next-page' || meta.name == 'next-page')
+                next_page = meta.content;
+        });
+        appDeckAPICall("previousnext", {previous_page: previous_page, next_page: next_page});
+    },
+
+    refreshIHM: function()
+    {
+        this.refreshTopMenu();
+        this.refreshPreviousNextPage();
+    },
+
+    load: function ()
+    {
+        this.refreshIHM();
+        this.helper.addClass(document.body, "appdeck");
+        this.helper.addClass(document.body, "appdeck_ios");
+        if (navigator.userAgent.match(/iPad/i))
+            this.helper.addClass(document.body, "appdeck_tablet");
+        else
+            this.helper.addClass(document.body, "appdeck_phone");
+        //appDeckAPICall("DOMContentLoaded");
+    },
+
+    // child
+
+    share: function(title, url, imageurl)
+    {
+        appDeckAPICall("share", {title: title, url: url, imageurl: imageurl});
+    },
+
+    gotoprevious: function()
+    {
+        appDeckAPICall("gotoprevious");
+    },
+
+    gotonext: function()
+    {
+        appDeckAPICall("gotonext");
+    },
+
+    popup: function(url)
+    {
+        appDeckAPICall("popup", url);
+    },
+
+
+    popover: function(config)
+    {
+        appDeckAPICall("popover", config);
+    },
+
+    inhistory: function(url)
+    {
+        return appDeckAPICall("inhistory", url);
+    },
+
+    shownotice: function(message)
+    {
+        return appDeckAPICall("shownotice", message);
+    },
+    showerror: function(message)
+    {
+        return appDeckAPICall("showerror", message);
+    },
+
+
+    // {images: images, startIndex: index, bgcolor: '#000000', gbalpha: 0.8}
+    // images: [{url: url, thumbnail: thumbnail_url, caption: 'title'} ...]
+    photoBrowser: function(config)
+    {
+        return appDeckAPICall("photobrowser", config);
+    },
+
+    getElementCoordinate: function (element)
+    {
+        for (var el=element, lx=0, ly=0;
+            el !== null;
+            lx += el.offsetLeft, ly += el.offsetTop, el = el.offsetParent);
+        return {x: lx,y: ly, width: element.offsetWidth, height: element.offsetHeight};
+    },
+
+    ping: function (data, cb) { appDeckAPICall("ping", data, cb); }
+
+};
+
+window.addEventListener('DOMContentLoaded', function() {
+    app.load();
+});

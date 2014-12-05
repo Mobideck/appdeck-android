@@ -8,8 +8,6 @@ import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
 
-import com.mobideck.appdeck.R;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.mobideck.android.support.DatePickerDialogCustom;
 import com.mobideck.appdeck.CacheManager.CacheResult;
 
@@ -19,10 +17,12 @@ import com.actionbarsherlock.internal.nineoldandroids.view.animation.AnimatorPro
 //import android.animation.Animator;
 //import android.animation.AnimatorListenerAdapter;
 
+import com.mobideck.appdeck.R;
 import com.nineoldandroids.animation.Animator;
 import com.nineoldandroids.animation.AnimatorListenerAdapter;
 //import com.nineoldandroids.animation.*;
 import com.nineoldandroids.animation.ObjectAnimator;
+
 import static com.nineoldandroids.view.ViewPropertyAnimator.animate;
 
 import android.app.Activity;
@@ -35,6 +35,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.provider.Browser;
 import android.support.v4.app.DialogFragment;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -49,21 +50,32 @@ import android.widget.TimePicker;
 import android.widget.Toast;
 import android.widget.ViewSwitcher;
 
+/*
 import uk.co.senab.actionbarpulltorefresh.library.ActionBarPullToRefresh;
 import uk.co.senab.actionbarpulltorefresh.library.PullToRefreshLayout;
 import uk.co.senab.actionbarpulltorefresh.library.listeners.OnRefreshListener;
 import uk.co.senab.actionbarpulltorefresh.library.PullToRefreshAttacher;
+*/
 
-public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListener {
+public class PageFragmentSwap extends AppDeckFragment /*implements OnRefreshListener*/ {
 	
 	public static final String TAG = "PageFragmentSwap";	
 	
 	public PageSwipe pageSwipe;
 	
-	private SmartWebView pageWebView;
-	private SmartWebView pageWebViewAlt;
+//	private SmartWebView pageWebView;
+///	private SmartWebView pageWebViewAlt;
+
+	private XSmartWebView pageWebView;
+	private XSmartWebView pageWebViewAlt;
 	
-	private PullToRefreshLayout mPullToRefreshLayout;
+//	private PullToRefreshLayout mPullToRefreshLayout;
+	private SwipeRefreshLayout swipeView;
+	private SwipeRefreshLayout swipeViewAlt;
+	
+	private long lastUrlLoad = 0;
+	
+	private FrameLayout wv_container;
 	
 	View adview;
 	
@@ -107,8 +119,14 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
     	super.onCreateView(inflater, container, savedInstanceState);
         // Inflate the layout for this fragment
         rootView = (FrameLayout)inflater.inflate(R.layout.page_fragment_swap, container, false);
+        rootView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         
-		pageWebView = new SmartWebView(this);
+		//pageWebView = new SmartWebView(this);
+		pageWebView = new XSmartWebView(this);
+
+    	//pageWebViewAlt = new SmartWebView(this);
+    	pageWebViewAlt = new XSmartWebView(this);
+    	
 		/*FrameLayout.LayoutParams webviewParams = new LinearLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT);
 		webviewParams.gravity = Gravity.TOP | Gravity.CENTER; 
 		webviewParams.weight = 1;*/		
@@ -119,12 +137,12 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
 		mAnimationDuration = getResources().getInteger(
                 android.R.integer.config_shortAnimTime);
 		
+		/*
+		
 		  // Now find the PullToRefreshLayout and set it up
         mPullToRefreshLayout = (PullToRefreshLayout) rootView.findViewById(R.id.ptr_layout);
         
         mPullToRefreshLayout.addView(pageWebView);//, webviewParams);
-    	pageWebViewAlt = new SmartWebView(this);
-    	pageWebViewAlt.setVisibility(View.GONE);
     	mPullToRefreshLayout.addView(pageWebViewAlt);
         
     	if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
@@ -134,7 +152,37 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
 	                .listener(this)
 	                .setup(mPullToRefreshLayout);		
     	}
+		*/
 		
+        swipeView = (SwipeRefreshLayout) rootView.findViewById(R.id.swipe);
+        swipeView.setColorScheme(android.R.color.holo_blue_dark, android.R.color.holo_blue_light, android.R.color.holo_green_light, android.R.color.holo_green_light);
+        swipeView.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+        	
+        	@Override
+            public void onRefresh() {
+                swipeViewAlt.setRefreshing(true);
+                swipeView.setRefreshing(true);
+                reloadInBackground();
+            }
+        });
+        swipeView.addView(pageWebView);
+        
+        swipeViewAlt = (SwipeRefreshLayout) rootView.findViewById(R.id.swipeAlt);
+        swipeViewAlt.setColorScheme(android.R.color.holo_blue_dark, android.R.color.holo_blue_light, android.R.color.holo_green_light, android.R.color.holo_green_light);
+        swipeViewAlt.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                swipeViewAlt.setRefreshing(true);
+                swipeView.setRefreshing(true);
+                reloadInBackground();
+            }
+        });
+        swipeViewAlt.addView(pageWebViewAlt);
+        swipeViewAlt.setVisibility(View.GONE);
+        
+        rootView.bringChildToFront(swipeView);
+        //swipeView.addView(wv_container);
+        		
         if (savedInstanceState != null)
         {
         	Log.i(TAG, "onCreateView with State");
@@ -166,8 +214,24 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
     	super.onResume();
     	CookieSyncManager.getInstance().stopSync();
     	pageWebView.resume();
+    	pageWebViewAlt.resume();
     	/*if (adview != null)
     		adview.resume();*/
+
+    	long now = System.currentTimeMillis();
+    	if (screenConfiguration != null && screenConfiguration.ttl > 0 && lastUrlLoad != 0)
+    	{
+			if (screenConfiguration.ttl > ((now - lastUrlLoad) / 1000))
+			{
+				Log.v(TAG, "Should NOT AutoRealod SCREEN:["+screenConfiguration.title+"] ttl: "+screenConfiguration.ttl + " cache ttl: "+lastUrlLoad + " now: " + now + " diff: " + (now - lastUrlLoad)/1000);				
+			} else {
+				Log.v(TAG, "Should AutoRealod SCREEN:["+screenConfiguration.title+"] ttl: "+screenConfiguration.ttl + " cache ttl: "+lastUrlLoad + " now: " + now + "diff: " + (now - lastUrlLoad)/1000);
+				reloadInBackground();
+			}
+		} else {
+			Log.v(TAG, "AutoRealod DISABLED :["+screenConfiguration.title+"] ttl: "+screenConfiguration.ttl + " cache ttl: "+lastUrlLoad + " now: " + now + "diff: " + (now - lastUrlLoad)/1000);
+		}
+    	
     };
     
     @Override
@@ -175,6 +239,7 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
     	super.onPause();
     	CookieSyncManager.getInstance().sync();
     	pageWebView.pause();
+    	pageWebViewAlt.pause();
     	/*if (adview != null)
     		adview.pause();*/
     };
@@ -211,7 +276,7 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
     	super.onDetach();
     }
 
-    
+    /*
     @Override
     public void onRefreshStarted(View view) {
           // TODO Auto-generated method stub
@@ -220,7 +285,7 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
           /////pull to refresh event occurs
 
     	reloadInBackground();
-    }    
+    } */   
     
     public void loadUrl(String absoluteURL)
     {
@@ -271,16 +336,18 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
 		
 		menuItems = screenConfiguration.getDefaultPageMenuItems(uri, this);			
 		
+		Log.v(TAG, "SCREEN: "+screenConfiguration.title+" TTL: "+screenConfiguration.ttl);
+		
 		// BEGIN TEST
 		
-		if (true)
+/*		if (true)
 		{
 			pageWebView.setForceCache(true);			
-			shouldAutoReloadInbackground = false;
+			shouldAutoReloadInbackground = true;
 			pageWebView.loadUrl(absoluteUrl);
 			loader.invalidateOptionsMenu();
 			return;
-		}		
+		}		*/
 		
 		progressStart(pageWebView);
 		
@@ -296,32 +363,36 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
 			
 			if (screenConfiguration.ttl > ((now - cacheResult.lastModified) / 1000))
 			{
-				Log.v(TAG, "Cache HIT ttl: "+screenConfiguration.ttl + " cache ttl: "+cacheResult.lastModified + " now: " + now + "diff: " + (now - cacheResult.lastModified)/1000);				
+				Log.v(TAG, "Cache HIT SCREEN:["+screenConfiguration.title+"] ttl: "+screenConfiguration.ttl + " cache ttl: "+cacheResult.lastModified + " now: " + now + " diff: " + (now - cacheResult.lastModified)/1000);				
 				//pageWebView.setForceCache(true);
 				loadFromCache = true;
 			} else {
-				Log.v(TAG, "Cache HIT DEPRECATED ttl: "+screenConfiguration.ttl + " cache ttl: "+cacheResult.lastModified + " now: " + now + "diff: " + (now - cacheResult.lastModified)/1000);				
+				Log.v(TAG, "Cache HIT DEPRECATED SCREEN:["+screenConfiguration.title+"] ttl: "+screenConfiguration.ttl + " cache ttl: "+cacheResult.lastModified + " now: " + now + "diff: " + (now - cacheResult.lastModified)/1000);
+				loadFromCache = true;
+				reloadInBackground = true;
 			}
 		} else {
-			Log.v("CACHE", "page IS NOT IN CACHE");
+			Log.v("CACHE", "Cache MISS SCREEN:["+screenConfiguration.title+"] ttl: "+screenConfiguration.ttl + " page IS NOT IN CACHE");
 		}
 		
+		/*
 		if (cacheResult.isInCache && !appDeck.isLowSystem)
 		{
 			if (cacheResult.lastModified + screenConfiguration.ttl < System.currentTimeMillis())
 				reloadInBackground = true;
-		}
+		}*/
 		
 		if (loadFromCache)
 		{
 			pageWebView.setForceCache(true);			
-			if (reloadInBackground && false)
+			if (reloadInBackground /*&& false*/)
 				shouldAutoReloadInbackground = true;
 			//String data = appDeck.cache.getCachedData(absoluteUrl);
 			//pageWebView.loadDataWithBaseURL(absoluteUrl, data, "text/html", "UTF-8", null);
 			//pageWebView.loadUrl(absoluteUrl);
 		}
 		pageWebView.loadUrl(absoluteUrl);
+		lastUrlLoad = System.currentTimeMillis();
 		loader.invalidateOptionsMenu();
 	}
 	
@@ -331,31 +402,27 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
     	if (reloadInProgress)
     		return;
     	if (appDeck.isLowSystem)
-    		loadPage(currentPageUrl);
-    	reloadInProgress = true;
-    	if (pageWebViewAlt == null)
     	{
-        	pageWebViewAlt = new SmartWebView(this);
-        	pageWebViewAlt.setVisibility(View.GONE);
-    		//LinearLayout.LayoutParams webviewParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT);
-    		//webviewParams.gravity = Gravity.TOP | Gravity.CENTER; 
-    		//webviewParams.weight = 1;		
-        	//rootView.addView(pageWebViewAlt);//, webviewParams);
-        	mPullToRefreshLayout.addView(pageWebViewAlt);
+    		loadPage(currentPageUrl);
+    		return;
     	}
-    	rootView.bringChildToFront(pageWebView);
+    	reloadInProgress = true;
+
     	pageWebView.stopLoading();
-		pageWebViewAlt.stopLoading();
-		pageWebViewAlt.resume();
-    	pageWebViewAlt.setVisibility(View.VISIBLE);    	
-    	pageWebViewAlt.touchDisabled = true;    	
+    	pageWebViewAlt.stopLoading();
     	pageWebViewAlt.setForceCache(false);
+    	
+    	rootView.bringChildToFront(swipeView);
+    	if (adview != null)
+    		rootView.bringChildToFront(adview);
+//    	swipeViewAlt.setVisibility(View.VISIBLE);
     	
     	//page_layout_alt.removeAllViews();
     	//etSupportProgressBarIndeterminateVisibility(true);
     	//pageWebViewAlt.stopLoading();
     	progressStart(pageWebViewAlt);
     	pageWebViewAlt.loadUrl(currentPageUrl);
+		lastUrlLoad = System.currentTimeMillis();
     }
     
 	@Override
@@ -372,21 +439,24 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
     {
     	if (swapInProgress)
     		return;
+
+/*		swipeView.removeView(pageWebView);
+		rootView.addView(pageWebView);
+		rootView.removeView(pageWebViewAlt);
+    	swipeView.addView(pageWebViewAlt);*/    	
     	
     	swapInProgress = true;
 
     	pageWebView.touchDisabled = true;
-    	
-
+    	pageWebViewAlt.touchDisabled = true;
     	pageWebViewAlt.setVerticalScrollBarEnabled(false);
     	
-    	if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
-    		pageWebViewAlt.setAlpha(0f);
     	pageWebView.copyScrollTo(pageWebViewAlt);
-    	rootView.bringChildToFront(pageWebViewAlt);
+    	swipeViewAlt.setAlpha(0f);
+    	swipeViewAlt.setVisibility(View.VISIBLE);
+    	rootView.bringChildToFront(swipeViewAlt);
     	if (adview != null)
     		rootView.bringChildToFront(adview);
-    	pageWebViewAlt.invalidate();
     	
     	final Runnable r = new Runnable()
     	{
@@ -394,61 +464,37 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
     	    {
     	        // Animate the content view to 100% opacity, and clear any animation
     	        // listener set on the view.
-    	    	animate(pageWebViewAlt)
+    	    	animate(swipeViewAlt)
     	                .alpha(1f)
     	                .setDuration(250)
     	                .setListener(new AnimatorListenerAdapter() {
     	                    @Override
     	                    public void onAnimationEnd(Animator animation) {
-    	                    	pageWebView.setVisibility(View.GONE);
+    	                    	swipeView.setVisibility(View.GONE);
     	            			pageWebView.stopLoading();
-    	            			pageWebView.pause();
-    	            			pageWebViewAlt.resume();
-
-    	            	    	pageWebView.touchDisabled = false;
+    	            			
+    	            			pageWebView.touchDisabled = false;
     	            	    	pageWebViewAlt.touchDisabled = false;
-    	            	    	
     	            	    	pageWebViewAlt.setVerticalScrollBarEnabled(true);
-    	            	    	rootView.bringChildToFront(pageWebViewAlt);
+    	            	    	
+    	            	    	// swap webview and layout
+    	            	    	//SmartWebView tmpWebView = pageWebView;
+    	            	    	/*XSmartWebView tmpWebView = pageWebView;
+    	            	    	pageWebView = pageWebViewAlt;
+    	            	    	pageWebViewAlt = tmpWebView;*/
+    	            	    	
+    	            	    	SwipeRefreshLayout tmp = swipeView;
+    	            	    	swipeView = swipeViewAlt;
+    	            	    	swipeViewAlt = tmp;
+    	            	    	
+    	            	    	rootView.bringChildToFront(swipeView);
     	            	    	if (adview != null)
     	            	    		rootView.bringChildToFront(adview);
-    	            	    	// swap webview and layout
-    	            	    	SmartWebView tmpWebView = pageWebView;
-    	            	    	pageWebView = pageWebViewAlt;
-    	            	    	pageWebViewAlt = tmpWebView;    
-    	            	    	
+    	            	    	    	            	    	
     	            	    	swapInProgress = false;
-    	            	    	reloadInProgress = false;
-    	            	   
+    	            	    	reloadInProgress = false;    	            	   
     	                    }
-    	                });
-
-    	        // Animate the loading view to 0% opacity. After the animation ends,
-    	        // set its visibility to GONE as an optimization step (it won't
-    	        // participate in layout passes, etc.)
-    	    	/*pageWebView.animate()
-    	                .alpha(0f)
-    	                .setDuration(mAnimationDuration)
-    	                .setListener(new AnimatorListenerAdapter() {
-    	                    @Override
-    	                    public void onAnimationEnd(Animator animation) {
-    	                    	pageWebView.setVisibility(View.GONE);
-    	                    	    	            	    	
-    	            			pageWebView.stopLoading();
-    	            			//pageWebView.loadUrl("about:blank");
-    	            			pageWebView.pause();
-    	            	    	
-    	            	    	// swap webview and layout
-    	            	    	SmartWebView tmpWebView = pageWebView;
-    	            	    	pageWebView = pageWebViewAlt;
-    	            	    	pageWebViewAlt = tmpWebView;
-    	            	    	
-    	            	    	pageWebView.touchDisabled = false;
-    	            	    	pageWebViewAlt.setVerticalScrollBarEnabled(true);
-    	                    }
-    	                });*/
-    	    	
-    	    	
+    	                });    	    	
     	    }
     	};
 
@@ -460,8 +506,7 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
     	.getHandler()
     	.postDelayed(r, 250);*/    	
     	
-    }
-    
+    }   
     
     public void progressStart(View origin)
     {
@@ -470,22 +515,25 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
     
     public void progressSet(View origin, int percent)
     {
-    	if (percent == 101)
+    	super.progressSet(origin, percent);
+    	if (percent == 100)
     	{
-    		Log.i(TAG, "progress is 101");
+//    		Log.i(TAG, "progress is 101");
     		if (origin == pageWebViewAlt)
     			swapWebView();
     	}
-    	else
-    	{
+//    	else
+//    	{
     		//if (shouldAutoReloadInbackground == false)
-    			super.progressSet(origin, percent);
-    	}
+    			
+//    	}
     }
     
     public void progressStop(View origin)
     {
     	super.progressStop(origin);
+    	swipeView.setRefreshing(false);
+    	swipeViewAlt.setRefreshing(false);
 		if (origin == pageWebView && shouldAutoReloadInbackground == true)
 		{
 			Log.i(TAG, "+++ Reload In Background +++");
@@ -511,8 +559,10 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
     	if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
     	{
 			 // If the PullToRefreshAttacher is refreshing, make it as complete
-	        if (mPullToRefreshLayout.isRefreshing())
-	            mPullToRefreshLayout.setRefreshComplete();
+	        //if (mPullToRefreshLayout != null && mPullToRefreshLayout.isRefreshing())
+	        //{
+	        //	mPullToRefreshLayout.setRefreshComplete();
+	        //}
         }		
 		
     }
@@ -540,20 +590,10 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
 		{
 			Log.i("API", uri.getPath()+" **READY**");
 			
-	    	if (call.webview == pageWebViewAlt)
+	    	if (call.smartWebView == pageWebViewAlt)
 	        {	    		
 	    		//swapWebView();
 	        }
-			return true;
-		}
-
-		if (call.command.equalsIgnoreCase("disable_catch_link"))
-		{
-			Log.i("API", uri.getPath()+" **DISABLE CATCH LINK**");
-			
-			boolean value = call.param.booleanValue();
-			call.smartWebView.catchLink = value;
-			
 			return true;
 		}
 		 
@@ -562,7 +602,7 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
 			Log.i("API", uri.getPath()+" **IN HISTORY**");
 			
 			boolean isInCache = false;
-			String relativeURL = call.param.textValue();
+			String relativeURL = call.input.getString("param");
 			URI url = this.uri.resolve(relativeURL);
 			if (url != null)
 			{
@@ -582,17 +622,20 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
 			Log.i("API", uri.getPath()+" **MENU**");
 			
 			// menu entries
-			if (call.param.isArray())
+			AppDeckJsonArray entries = call.input.getArray("param");
+			if (entries.length() > 0)
 			{
 				PageMenuItem defaultMenu[] = screenConfiguration.getDefaultPageMenuItems(uri, this); 
-				menuItems = new PageMenuItem[call.param.size() + defaultMenu.length];
+				menuItems = new PageMenuItem[entries.length() + defaultMenu.length];
 				
 				int i;
-				for (i = 0; i < call.param.size(); i++) {
-					String title = call.param.path(i).path("title").textValue();
-					String content = call.param.path(i).path("content").textValue();
-					String icon = call.param.path(i).path("icon").textValue();
-					String type = call.param.path(i).path("type").textValue();
+				for (i = 0; i < entries.length(); i++)
+				{
+					AppDeckJsonNode entry = entries.getNode(i);
+					String title = entry.getString("title");
+					String content = entry.getString("content");
+					String icon = entry.getString("icon");
+					String type = entry.getString("type");
 					
 			        //UIImage *iconImage = self.child.loader.conf.icon_action.image;
 					PageMenuItem item = new PageMenuItem(title, icon, type, content, uri, this);
@@ -616,14 +659,10 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
 		{
 			Log.i("API", uri.getPath()+" **PREVIOUSNEXT**");
 			
-			previousPageUrl = call.param.path("previous_page").textValue();
-			if (previousPageUrl == null)
-				previousPageUrl = "";
+			previousPageUrl = call.param.getString("previous_page");
 			if (previousPageUrl.isEmpty() == false)
 				previousPageUrl = uri.resolve(previousPageUrl).toString();
-			nextPageUrl = call.param.path("next_page").textValue();
-			if (nextPageUrl == null)
-				nextPageUrl = "";
+			nextPageUrl = call.param.getString("next_page");
 			if (nextPageUrl.isEmpty() == false)
 				nextPageUrl = uri.resolve(nextPageUrl).toString();			
 			if (pageSwipe != null)
@@ -636,7 +675,7 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
 		{
 			Log.i("API", uri.getPath()+" **POPOVER**");
 
-			String url = call.param.path("url").textValue();
+			String url = call.param.getString("url");
 			
 			if (url != null && !url.isEmpty())
 			{
@@ -644,13 +683,13 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
 			}
 			
 			return true;
-		}			
+		}		
 		
 		if (call.command.equalsIgnoreCase("popup"))
 		{
 			Log.i("API", uri.getPath()+" **POPUP**");
 			
-			loader.showPopUp(this, call.param.textValue());
+			loader.showPopUp(this, call.input.getString("param"));
 			
 			return true;
 		}
@@ -661,11 +700,11 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
 			
 			call.postponeResult();
 			
-			String title = call.param.path("title").textValue();
-			JsonNode values = call.param.path("values");
-        	CharSequence[] items = new CharSequence[values.size()];
-        	for (int i = 0; i < values.size(); i++) {
-				items[i] = values.get(i).textValue();
+			String title = call.param.getString("title");
+			AppDeckJsonArray values = call.param.getArray("values");
+        	CharSequence[] items = new CharSequence[values.length()];
+        	for (int i = 0; i < values.length(); i++) {
+				items[i] = values.getString(i);
 			}
 
         	AlertDialog.Builder builder = new AlertDialog.Builder(loader);
@@ -695,10 +734,10 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
 		{
 			Log.i("API", uri.getPath()+" **SELECT DATE**");
 			
-			String title = call.param.path("title").toString();
-			JsonNode year = call.param.path("year");
-			JsonNode month = call.param.path("month");
-			JsonNode day = call.param.path("day");
+			String title = call.param.getString("title");
+			String year = call.param.getString("year");
+			String month = call.param.getString("month");
+			String day = call.param.getString("day");
 			
 			call.postponeResult();
 			
@@ -721,11 +760,11 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
 		        }
 		    };			
 			
-		    int yearValue = year.intValue();
-		    int monthValue = month.intValue();
-		    int dayValue = day.intValue();
+		    int yearValue = call.param.getInt("year");
+		    int monthValue = call.param.getInt("month");
+		    int dayValue = call.param.getInt("day");
 		    Calendar cal = GregorianCalendar.getInstance();
-		    cal.set(year.intValue(), month.intValue() - 1, day.intValue());
+		    cal.set(yearValue, monthValue - 1, dayValue);
 		    //if (yearValue == 0)
 		    	yearValue = cal.get(Calendar.YEAR);
 		    //if (monthValue == 0)
@@ -747,11 +786,11 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
 				}
 			});
 			  
-			  if (year.isNull())
+			  if (year.length() > 0)
 				  datepicker.setYearEnabled(false);
-			  if (month.isNull())
+			  if (month.length() > 0)
 				  datepicker.setMonthEnabled(false);
-			  if (day.isNull())
+			  if (day.length() > 0)
 				  datepicker.setDayEnabled(false);			  
 			  datepicker.setTitle(title);
 			  datepicker.show();
@@ -793,42 +832,5 @@ public class PageFragmentSwap extends AppDeckFragment implements OnRefreshListen
 				pageWebView.resume();
 		}
 	}
-	
-/*	private void refreshWebView()
-	{
-		//url = "http://www.google.fr/";
-		mPullRefreshWebViewAlt.setRefreshing(true);
-		pageWebViewAlt.loadUrl(url);
-		setProgress(true, 0);
-	}*/
-	
-/*
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.page, menu);
-        return true;
-    }*/
-    /*
-    @Override
-    public void onBackPressed() {
-        if ( slidingMenu.isMenuShowing()) {
-            slidingMenu.toggle();
-        }
-        else {
-            super.onBackPressed();
-        }
-    }
-    */
-
-    /*public class SimpleMenuItemImageLoadingListener extends SimpleImageLoadingListener
-    {
-    	public MenuItem menuItem;
-    	
-    	public SimpleMenuItemImageLoadingListener(MenuItem menuItem)
-    	{
-    		this.menuItem = menuItem;
-    	}
-    }*/
 	
 }

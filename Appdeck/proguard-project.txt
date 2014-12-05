@@ -27,3 +27,16 @@
 }
 
 -keepattributes SourceFile,LineNumberTable
+
+-dontusemixedcaseclassnames
+-dontskipnonpubliclibraryclasses
+-verbose
+
+-printseeds seeds.txt
+-printusage unused.txt
+-printmapping mapping.txt
+
+-optimizations !code/simplification/arithmetic,!code/simplification/cast,!field/*,!class/merging/*
+-optimizationpasses 5
+-allowaccessmodification
+-dontpreverify

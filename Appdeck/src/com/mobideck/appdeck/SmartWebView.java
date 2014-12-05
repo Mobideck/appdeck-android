@@ -19,6 +19,7 @@ import com.mobideck.appdeck.R;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.app.Application;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -74,7 +75,7 @@ import android.widget.VideoView;
 public class SmartWebView extends WebView {
 	static String TAG = "SmartWebView";
 	
-	static String appdeck_inject_js = "javascript:if (typeof(appDeckAPICall)  === 'undefined') { appDeckAPICall = ''; var scr = document.createElement('script'); scr.type='text/javascript';  scr.src = 'http://appdata.static.appdeck.mobi/js/fastclick.js'; document.getElementsByTagName('head')[0].appendChild(scr); var scr = document.createElement('script'); scr.type='text/javascript';  scr.src = 'http://appdata.static.appdeck.mobi/js/appdeck_dev.js'; document.getElementsByTagName('head')[0].appendChild(scr);}";	
+	static String appdeck_inject_js = "javascript:if (typeof(appDeckAPICall)  === 'undefined') { appDeckAPICall = ''; var scr = document.createElement('script'); scr.type='text/javascript';  scr.src = 'http://appdata.static.appdeck.mobi/js/fastclick.js'; document.getElementsByTagName('head')[0].appendChild(scr); var scr = document.createElement('script'); scr.type='text/javascript';  scr.src = 'http://appdata.static.appdeck.mobi/js/appdeck_1.10.js'; document.getElementsByTagName('head')[0].appendChild(scr);}";	
 	
 	static boolean prioritySet = false;
 	
@@ -219,8 +220,8 @@ public class SmartWebView extends WebView {
 			setLayerType(View.LAYER_TYPE_HARDWARE, null);
 		
 
-		if (Build.VERSION.SDK_INT == Build.VERSION_CODES.ICE_CREAM_SANDWICH)
-			setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+		//if (Build.VERSION.SDK_INT == Build.VERSION_CODES.ICE_CREAM_SANDWICH)
+		//	setLayerType(View.LAYER_TYPE_SOFTWARE, null);
 		//setBackgroundColor(Color.argb(1, 0, 0, 0));
 		
 		CookieManager.getInstance().setAcceptCookie(true);
@@ -328,7 +329,8 @@ public class SmartWebView extends WebView {
         }        
         
 		try {
-			WebkitProxy2.setProxy(this, root.loader.proxyHost, root.loader.proxyPort, "com.mobideck.app.deck.AppDeckApplication");
+			
+			WebkitProxy2.setProxy(this, root.loader.proxyHost, root.loader.proxyPort, Application.class.getCanonicalName());
 			//WebkitProxy.setProxy("AppDeckApplication", root.loader, root.loader.proxyHost, root.loader.proxyPort);
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
@@ -379,13 +381,15 @@ public class SmartWebView extends WebView {
 //		            view.loadUrl(js);
 	              //String js = "javascript:if (typeof(appDeckAPICall)  === 'undefined') { var scr = document.createElement('script'); scr.type='text/javascript';  scr.src = 'http://testapp.appdeck.mobi/appdeck.js'; document.getElementsByTagName('head')[0].appendChild(scr); }";
 	              //view.loadUrl(js);
+	    		  /*
 	    		  root.loader.runOnUiThread(new Runnable() {
 
 	    	            public void run() {
-	    	            	String js = "javascript:if (typeof(appDeckAPICall)  === 'undefined') { var scr = document.createElement('script'); scr.type='text/javascript';  scr.src = 'http://appdata.static.appdeck.mobi/js/fastclick.js'; document.getElementsByTagName('head')[0].appendChild(scr);  var scr = document.createElement('script'); scr.type='text/javascript';  scr.src = 'http://appdata.static.appdeck.mobi/js/appdeck_dev.js'; document.getElementsByTagName('head')[0].appendChild(scr); }";
-	    		              loadUrl(js);
+	    	            	//String js = appdeck_inject_js;
+//	    	            	String js = "javascript:if (typeof(appDeckAPICall)  === 'undefined') { var scr = document.createElement('script'); scr.type='text/javascript';  scr.src = 'http://appdata.static.appdeck.mobi/js/fastclick.js'; document.getElementsByTagName('head')[0].appendChild(scr);  var scr = document.createElement('script'); scr.type='text/javascript';  scr.src = 'http://appdata.static.appdeck.mobi/js/appdeck_dev.js'; document.getElementsByTagName('head')[0].appendChild(scr); }";
+	    		            loadUrl(appdeck_inject_js);
 	    	            }
-	    	        });
+	    	        });*/
 	    		  firstLoad = false;
 	    		  return;
 	    	  }
@@ -429,8 +433,8 @@ public class SmartWebView extends WebView {
 	    @Override
 	    public WebResourceResponse shouldInterceptRequest(final WebView view, String absoluteURL) {
 
-	    	if (true)
-	    		return null;
+	    	//if (true)
+	    	//	return null;
 	    	
 	    	if (absoluteURL.indexOf("data:") == 0)
 	    		return null;
@@ -468,66 +472,20 @@ public class SmartWebView extends WebView {
 	    	// resource is in embed resources
 	    	WebResourceResponse response = appDeck.cache.getEmbedResource(absoluteURL);
 	    	if (response != null)
+	    	{
+	    		Log.i(TAG, "FROM EMBED: "+absoluteURL);
 	    		return response;
-	    	
-	    	// resources is in httpcache
+	    	}
+
 	    	if (appDeck.cache.shouldCache(absoluteURL) || shouldLoadFromCache)
 	    	{
-	    		response = appDeck.cache.getCachedResource(absoluteURL, cookie);
-	    		if (response != null)
-	    			return response;
-	    	}
-	    	
-	    	// resource should be cached for later use
-	    	boolean shouldStoreIncache = false;
-	    	
-	    	try {
-				URI urlUri = new URI(url);
-				if (urlUri == null)
-					shouldStoreIncache = false;
-				else if (absoluteURL.equalsIgnoreCase(url))
-					shouldStoreIncache = true;
-				else if (urlUri.getHost() != null && urlUri.getHost().equalsIgnoreCase(uri.getHost()))
-					shouldStoreIncache = true;
-			} catch (URISyntaxException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-	    	if (shouldStoreIncache)
-	    	{
-	    		String cache_path = appDeck.cache.getCacheEntryPath(absoluteURL);
-	    		try {
-					return appDeck.cache.createCacheableResponse(absoluteURL, cache_path, cookie);
-				} catch (IOException e) {
-					e.printStackTrace();
-				}	    			    		
-	    	}
-	    	
-	    	//response = appDeck.cache.getEmbedResource(absoluteURL);
-	    	
-	    	/*if (absoluteURL.equalsIgnoreCase(url))
-	    	{
-	    		return new WebResourceResponse("text/html", null, new InjectJSInputStream(absoluteURL, "http://testapp.appdeck.mobi/appdeck.js"));
-	    	}*/
-	    	// android.os.Process.myTid();
-	    	
-	    	//android.webkit.CacheManager.CacheResult cache_result = android.webkit.CacheManager.getCacheFile("http://testapp.appdeck.mobi/appdeck.js", new HashMap());
-
-	    	/*if (absoluteURL.equals("http://www.play3-live.com/__appli/iphone/js/fastclick.js"))
-	    	{
-	    		return appDeck.cache.responseFromData(new byte[0]);
-	    	}*/
-	    	
-	    	/*
-	    	if (appDeck.cache.shouldCache(absoluteURL))
-	    	{
-	    		response = appDeck.cache.getFromCache(absoluteURL);
+	    		response = appDeck.cache.getCachedResource(absoluteURL);
 	    		if (response != null)
 	    		{
-	    			Log.d("InterceptRequest", absoluteURL);
+	    			Log.i(TAG, "FROM CACHE: "+absoluteURL);
 	    			return response;
 	    		}
-	    	}*/
+	    	}
 	    	
 	    	return null;
 	    }	    
@@ -541,9 +499,8 @@ public class SmartWebView extends WebView {
             // force inject of appdeck.js if needed
             view.loadUrl(appdeck_inject_js);
                        
-            SmartWebView.this.invalidateHack(100);
-            
-            
+            SmartWebView.this.invalidateHack(100);            
+
             root.progressStop(view);
             
             //view.loadUrl("javascript:document.body.style.zoom = window.innerHeight / 320;");
@@ -557,14 +514,23 @@ public class SmartWebView extends WebView {
 			//CookieSyncManager.getInstance().sync();            
             
             //page.onPageFinished(view, url);
-            //root.setProgress(view, false, 100);
-            
+            //root.setProgress(view, false, 100);   
         }
         
         @Override
         public void onReceivedError(WebView view, int errorCode, String description, String failingUrl)
         {
-        	Toast.makeText(getContext(), "" + failingUrl+ ": " +description, Toast.LENGTH_LONG).show();
+        	// this is the main url that is falling
+        	if (failingUrl.equalsIgnoreCase(url) && shouldLoadFromCache == true)
+        	{
+        		Toast.makeText(getContext(), "Not in cache: " + failingUrl, Toast.LENGTH_LONG).show();
+        		view.setVisibility(View.INVISIBLE);
+        	}
+        	else
+        	{
+        		Toast.makeText(getContext(), "" + failingUrl+ ": ("+url+") " +description, Toast.LENGTH_LONG).show();
+        	}
+        	
         }        
         
         
@@ -675,13 +641,14 @@ public class SmartWebView extends WebView {
         @Override
         public boolean onJsPrompt(WebView view, String url, String message, String defaultValue, final JsPromptResult result) 
         {
+        	/*
 			if (message.startsWith("appdeckapi:") == true)
 			{
 				AppDeckApiCall call = new AppDeckApiCall(message.substring(11), defaultValue, result);
 				call.webview = view;
 				call.smartWebView = SmartWebView.this;
 				call.appDeckFragment = root;
-				Boolean res = root.apiCall(call);
+				Boolean res = apiCall(call); //root.apiCall(call);
 				call.sendResult(res);
 				return true;
 			}        	
@@ -714,7 +681,7 @@ public class SmartWebView extends WebView {
                             }
                         })
                 .show();
-            
+            */
             return true;
         };
 
@@ -758,7 +725,7 @@ public class SmartWebView extends WebView {
             @Override  
             public void onShowCustomView(View view, CustomViewCallback callback) {
             	//super.onShowCustomView(view, callback);
-        		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
+        		if (Build.VERSION.SDK_INT > Build.VERSION_CODES.ICE_CREAM_SANDWICH)
         	    {
         			setLayerType(WebView.LAYER_TYPE_HARDWARE, null);
         	    }
@@ -1184,7 +1151,7 @@ public class SmartWebView extends WebView {
         public void run() {
             SmartWebView.this.invalidate();
             // force inject of appdeck.js if needed
-            SmartWebView.this.loadUrl(appdeck_inject_js);
+            //SmartWebView.this.loadUrl(appdeck_inject_js);
 
         }
 
@@ -1308,5 +1275,24 @@ public class SmartWebView extends WebView {
     	//appDeck = AppDeck.getInstance();
     	return super.restoreState(inState);
     }
+    
+	public boolean apiCall(final AppDeckApiCall call)
+	{
+		if (call.command.equalsIgnoreCase("disable_catch_link"))
+		{
+			Log.i("API", uri.getPath()+" **DISABLE CATCH LINK**");
+			
+			boolean value = call.input.getBoolean("param");
+			((SmartWebView)call.smartWebView).catchLink = value;
+			
+			return true;
+		}
+		
+		
+		if (root != null)
+			return root.apiCall(call);
+		else
+			return false;
+	}
     
 }

@@ -51,16 +51,16 @@ public class PopOverFragment extends AppDeckFragment {
 		appDeck = AppDeck.getInstance();
 		this.origin = origin;
 		self = this;
-		url = origin.resolveURL(call.param.path("url").textValue());
-	    width = call.param.path("width").floatValue();
-	    height = call.param.path("height").floatValue();
-	    alpha = call.param.path("alpha").floatValue();
-	    tint = call.param.path("tint").textValue();
-	    arrow = call.param.path("arrow").textValue();
-	    title = call.param.path("title").textValue();
-	    bgcolor = call.param.path("bgcolor").textValue();
-	    border = call.param.path("border").floatValue();
-	    radius = call.param.path("radius").floatValue();
+		url = origin.resolveURL(call.param.getString("url"));
+	    width = call.param.getFloat("width");
+	    height = call.param.getFloat("height");
+	    alpha = call.param.getFloat("alpha");
+	    tint = call.param.getString("tint");
+	    arrow = call.param.getString("arrow");
+	    title = call.param.getString("title");
+	    bgcolor = call.param.getString("bgcolor");
+	    border = call.param.getFloat("border");
+	    radius = call.param.getFloat("radius");
 	}
 
 	@Override

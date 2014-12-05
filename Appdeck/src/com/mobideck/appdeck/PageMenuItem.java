@@ -2,12 +2,13 @@ package com.mobideck.appdeck;
 
 import java.net.URI;
 
-import com.actionbarsherlock.view.MenuItem;
 import com.nineoldandroids.animation.Animator;
 import com.nineoldandroids.animation.AnimatorListenerAdapter;
 import com.nineoldandroids.animation.AnimatorSet;
 import com.nineoldandroids.animation.ObjectAnimator;
 import com.nostra13.universalimageloader.core.listener.SimpleImageLoadingListener;
+
+import android.view.MenuItem;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;

@@ -28,5 +28,4 @@ public class CacheFiltersSource implements HttpFiltersSource
     public int getMaximumResponseBufferSizeInBytes() {
     	return 0;//Integer.MAX_VALUE;
     }
-	
 }

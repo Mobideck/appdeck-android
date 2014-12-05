@@ -6,11 +6,12 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.regex.Pattern;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.JSONTokener;
+
 import com.crashlytics.android.Crashlytics;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
@@ -54,32 +55,22 @@ public class Configuration {
 		}		
 		
 		// first try to load JSon from application embed ressources
-		InputStream jsonStream = null;
-		//if (AppDeck.getInstance().noCache == false)
-		jsonStream = AppDeck.getInstance().cache.getEmbedResourceStream(app_json_url);
-		if (jsonStream == null)
-			jsonStream = AppDeck.getInstance().cache.getCachedResourceStream(app_json_url);
-		if (jsonStream != null)
+		CacheManagerCachedResponse cacheResponse = AppDeck.getInstance().cache.getCachedResponse(app_json_url);
+		if (cacheResponse == null)
+			cacheResponse = AppDeck.getInstance().cache.getEmbedResponse(app_json_url);
+		if (cacheResponse != null)
 		{
-			JsonNode node = null;
+			InputStream jsonStream = cacheResponse.getStream();
+			JSONObject node;
 			try {
-				ObjectMapper mapper = new ObjectMapper(AppDeck.getInstance().jsonFactory);
-				node = mapper.readValue(jsonStream, JsonNode.class);
-			} catch (JsonParseException e) {
+				String jsonString = Utils.streamGetContent(jsonStream);
+				node = (JSONObject) new JSONTokener(jsonString).nextValue();
+		    	readConfiguration(node);
+		    	return;
+			} catch (JSONException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-				Crashlytics.log("JSon parse exception "+e.getMessage());
-			} catch (JsonMappingException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-				Crashlytics.log("JSon mapping exception "+e.getMessage());
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-				Crashlytics.log("JSon IO exception "+e.getMessage());
 			}
-	    	readConfiguration(node);
-	    	return;
 		}
 		Crashlytics.log("JSon not in embed ressources");
 		Log.e(TAG, "JSon not in embed ressources");
@@ -110,7 +101,7 @@ public class Configuration {
 		});			*/	
 	}
 	
-	private void readConfiguration(JsonNode node)
+	private void readConfiguration(JSONObject node)
 	{
 		if (node == null)
 		{
@@ -120,17 +111,18 @@ public class Configuration {
 		AppDeckJsonNode root = new AppDeckJsonNode(node);
 		// load configuration from json
 		
-		app_version = root.path("version").intValue();
-		app_api_key = root.path("api_key").textValue();
+		app_version = root.getInt("version");
+		app_api_key = root.getString("api_key");
 		
 		Log.d("Configuration", "Version: " + app_version + " API Key: "+ app_api_key);		
 		Crashlytics.log("JSon Version: " + app_version + " API Key: "+ app_api_key);
 		
-		enable_debug = root.path("enable_debug").booleanValue();
+		enable_debug = root.getBoolean("enable_debug");
 		
 		try {
-			String base_url = root.path("base_url").textValue();
-			app_base_url = new URI(base_url);
+			String base_url = root.getString("base_url", null);
+			if (base_url != null)
+				app_base_url = new URI(base_url);
 		} catch (URISyntaxException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -138,48 +130,32 @@ public class Configuration {
 		if (app_base_url == null)
 			app_base_url = json_url;
 		
-//		bootstrapUrl = readURI(root.path("bootstrap"), "base_url", null);
-		
 		// bootstrap
-		bootstrapUrl = readURI(root.path("bootstrap"), "url", "/");
-		/*try {
-			bootstrapUrl = url.resolve(root.path("bootstrap").path("url").textValue()); 
-		} catch (Exception e) {
-			bootstrapUrl = url.resolve("/");
-		}*/
+		bootstrapUrl = readURI(root.get("bootstrap"), "url", "/");
 
 		// left menu
-		leftMenuUrl = readURI(root.path("leftmenu"), "url", null);
-		
-		leftMenuWidth = root.path("leftmenu").path("width").intValue();
-		if (leftMenuWidth == 0)
-			leftMenuWidth = 320;
-/*
-		try {		
-			leftMenuUrl = url.resolve(root.path("leftmenu").path("url").textValue());
-			leftMenuWidth = root.path("leftmenu").path("width").intValue();
+		AppDeckJsonNode leftMenu = root.get("leftmenu");
+//		leftMenu = null;
+		if (leftMenu != null)
+		{
+			leftMenuUrl = readURI(leftMenu, "url", null);
+			leftMenuWidth = leftMenu.getInt("width");
 			if (leftMenuWidth == 0)
 				leftMenuWidth = 320;
-		} catch (Exception e) {
-			leftMenuUrl = null;
-		}*/
-		
+		}
+
 		// right menu
-		rightMenuUrl = readURI(root.path("rightmenu"), "url", null);
-		rightMenuWidth = root.path("rightmenu").path("width").intValue();
-		if (leftMenuWidth == 0)
-			leftMenuWidth = 320;
-		/*
-		try {
-			rightMenuUrl = url.resolve(root.path("rightmenu").path("url").textValue());
-			rightMenuWidth = root.path("rightmenu").path("width").intValue();
+		AppDeckJsonNode rightMenu = root.get("rightmenu");
+//		rightMenu = null;
+		if (rightMenu != null)
+		{
+			rightMenuUrl = readURI(rightMenu, "url", null);
+			rightMenuWidth = rightMenu.getInt("width");
 			if (rightMenuWidth == 0)
-				rightMenuWidth = 320;		
-		} catch (Exception e) {
-			rightMenuUrl = null;
-		}*/
+				rightMenuWidth = 320;
+		}
 		
-		title = root.path("title").textValue();
+		title = root.getString("title", null);
 		
 		// colors
 		app_color = readColor(root, "app_color");
@@ -193,22 +169,21 @@ public class Configuration {
 		topbar_color = readColor(root, "app_topbar_color");
 		
 		// cache
-		AppDeckJsonNode cacheNode = root.path("cache"); 
-		if (cacheNode.isArray())
+		AppDeckJsonArray cacheNodes = root.getArray("cache"); 
+		if (cacheNodes.length() > 0)
 		{
-			cache = new Pattern[cacheNode.size()];
-			for (int i = 0; i < cacheNode.size(); i++) {
-				String regexp = cacheNode.path(i).textValue();
+			cache = new Pattern[cacheNodes.length()];
+			for (int i = 0; i < cacheNodes.length(); i++) {
+				String regexp = cacheNodes.getString(i);
 				Pattern p = Pattern.compile(regexp, Pattern.CASE_INSENSITIVE);
 				cache[i] = p;
 			}
 		}
 		
 		// CDN
-		
-		cdn_enabled = root.path("cdn_enabled").booleanValue();
-		cdn_host = root.path("cdn_host").textValue();
-		cdn_path = root.path("cdn_path").textValue();
+		cdn_enabled = root.getBoolean("cdn_enabled");
+		cdn_host = root.getString("cdn_host", null);
+		cdn_path = root.getString("cdn_path", null);
 		if (app_api_key != null)
 		{
 			if (cdn_host == null)
@@ -220,36 +195,37 @@ public class Configuration {
 			cdn_enabled = false;
 		
 		// screen Configuration
-		AppDeckJsonNode screenNode = root.path("screens"); 
-		if (screenNode.isArray())
+		AppDeckJsonArray screenNodes = root.getArray("screens"); 
+		if (screenNodes.length() > 0)
 		{
-			screenConfigurations = new ScreenConfiguration[screenNode.size()];
-			for (int i = 0; i < screenNode.size(); i++) {
-				ScreenConfiguration config = new ScreenConfiguration(screenNode.path(i), app_base_url);
+			screenConfigurations = new ScreenConfiguration[screenNodes.length()];
+			for (int i = 0; i < screenNodes.length(); i++) {
+				AppDeckJsonNode screen = screenNodes.getNode(i);
+				ScreenConfiguration config = new ScreenConfiguration(screen, app_base_url);
 				screenConfigurations[i] = config;
 			}
 		}
 
 		// prefetch url
 		prefetch_url = readURI(root, "prefetch_url", String.format("http://%s.appdeckcdn.com/%s.7z", app_api_key, app_api_key));
-		prefetch_ttl = root.path("prefetch_ttl").intValue();
+		prefetch_ttl = root.getInt("prefetch_ttl");
 		if (prefetch_ttl == 0)
 			prefetch_ttl = 600;
 		
-		ga = root.path("ga").textValue();
+		ga = root.getString("ga");
 		
 		push_register_url = readURI(root, "push_register_url", "http://push.appdeck.mobi/register");
 
-		push_google_cloud_messaging_sender_id = root.path("push_google_cloud_messaging_sender_id").textValue();
+		push_google_cloud_messaging_sender_id = root.getString("push_google_cloud_messaging_sender_id");
 		
 		embed_url = readURI(root, "embed_url", null);
 		embed_runtime_url = readURI(root, "embed_runtime_url", null);
 		
-		enable_mobilize = root.path("enable_mobilize").booleanValue();
+		enable_mobilize = root.getBoolean("enable_mobilize");
 
 		icon_theme = "light";
 		String icon_theme_suffix = "";
-		if (root.path("icon_theme").textValue().equalsIgnoreCase("dark"))
+		if (root.getString("icon_theme").equalsIgnoreCase("dark"))
 		{
 			icon_theme = "dark";
 			icon_theme_suffix = "_dark";
@@ -277,28 +253,10 @@ public class Configuration {
 		image_loader = readURI(root, "image_loader", "http://appdata.static.appdeck.mobi/res/android/images/loader"+icon_theme_suffix+".png");
 		image_pull_arrow = readURI(root, "image_pull_arrow", "http://appdata.static.appdeck.mobi/res/android/images/pull_arrow"+icon_theme_suffix+".png");
 
-		
-		/*
-		imageToLoad = 12;
-		logo = readImage(root, "logo", null);
-		icon_menu = readImage(root, "icon_action", "http://appdata.static.appdeck.mobi/res/icons/menu.png");
-		image_loader = readImage(root, "icon_action", "http://appdata.static.appdeck.mobi/res/images/loader.png");
-		image_pull_arrow = readImage(root, "icon_action", "http://appdata.static.appdeck.mobi/res/images/pull_arrow.png");
-		icon_action = readImage(root, "icon_action", "http://appdata.static.appdeck.mobi/res/icons/action.png");
-		icon_cancel = readImage(root, "icon_action", "http://appdata.static.appdeck.mobi/res/icons/action.png");
-		icon_close = readImage(root, "icon_action", "http://appdata.static.appdeck.mobi/res/icons/close.png");
-		icon_next = readImage(root, "icon_action", "http://appdata.static.appdeck.mobi/res/icons/next.png");
-		icon_previous = readImage(root, "icon_action", "http://appdata.static.appdeck.mobi/res/icons/previous.png");
-		icon_up = readImage(root, "icon_action", "http://appdata.static.appdeck.mobi/res/icons/up.png");
-		icon_down = readImage(root, "icon_action", "http://appdata.static.appdeck.mobi/res/icons/down.png");
-		icon_refresh = readImage(root, "icon_action", "http://appdata.static.appdeck.mobi/res/icons/refresh.png");
-		*/
 		image_network_error_url = readURI(root, "image_network_error", "http://appdata.static.appdeck.mobi/res/android/images/network_error.png");
 		image_network_error_background_color = readColor(root, "image_network_error_background_color");
 		
 		Crashlytics.log("Read JSON configuration");
-		//if (imageToLoad == 0)
-		//AppDeck.getInstance().configurationReady();
 		
 	}
     
@@ -315,64 +273,8 @@ public class Configuration {
 			}
 		}				
 		return ScreenConfiguration.defaultConfiguration();
-	}
-	
-	/*protected void finishLoadImage()
-	{
-		imageToLoad--;
-		if (imageToLoad == 0)
-			AppDeck.getInstance().configurationReady();
-	}*/
-	
-	/*protected ImageView readImage(JsonNode root, String name, String defaultValue)
-	{
-		String imageURL = defaultValue;
-		
-		// get image URL
-		JsonNode value = root.path(name);
-		if (value.isMissingNode() == false)
-		{
-			imageURL = url.resolve(value.textValue()).toString();
-		}
-		
-		if (imageURL == null)
-		{
-			imageToLoad--;
-			return null;
-		}
-		
-		// download image
-		// https://github.com/nostra13/Android-Universal-Image-Loader
-		ImageView imageView = new ImageView(AppDeck.getInstance().context);
-		
-		DisplayImageOptions displayOptions = new DisplayImageOptions.Builder().build();
-		
-		ImageLoader.getInstance().displayImage(imageURL, imageView, displayOptions, new ImageLoadingListener() {
-		    @Override
-		    public void onLoadingStarted(String imageUri, View view) {
-		        Log.d("image", "onLoadingStarted");
-		    }
-		    @Override
-		    public void onLoadingFailed(String imageUri, View view, FailReason failReason) {
-		    	Log.d("image", "onLoadingFailed");
-		    	finishLoadImage();
-		    }
-		    @Override
-		    public void onLoadingComplete(String imageUri, View view, Bitmap loadedImage) {
-		    	Log.d("image", "onLoadingComplete");
-		    	finishLoadImage();
-		    }
-		    @Override
-		    public void onLoadingCancelled(String imageUri, View view) {
-		    	Log.d("image", "onLoadingCancelled");
-		    	finishLoadImage();
-		    }
+	}	
 
-		});
-		
-		return imageView;
-	}*/
-	
 	int parseColor(String colorTxt)
 	{
 		// try android parser
@@ -380,14 +282,14 @@ public class Configuration {
 			return Color.parseColor(colorTxt);
 		} catch (Exception e) {
 			// TODO: handle exception
-			e.printStackTrace();
+			//e.printStackTrace();
 		}
 		// try by appending #
 		try {
 			return Color.parseColor("#"+colorTxt);
 		} catch (Exception e) {
 			// TODO: handle exception
-			e.printStackTrace();
+			//e.printStackTrace();
 		}
 		// error case
 		return Color.TRANSPARENT;
@@ -396,43 +298,38 @@ public class Configuration {
 	
 	protected AppDeckColor readColor(AppDeckJsonNode root, String name)
 	{
-		
-		AppDeckJsonNode value = root.path(name);
-		
-		if (value.isMissingNode())
-			return null;
+		// try as an array
+		AppDeckJsonArray array = root.getArray(name);
 				
-		if (value.isArray() && value.size() == 2)
+		if (array != null && array.length() == 2)
 		{
 			AppDeckColor color = new AppDeckColor();
-			color.color1 = parseColor(value.path(0).textValue());
-			color.color2 = parseColor(value.path(1).textValue());
-			return color;
-		}		
-		if (value.isArray() == false)
-		{
-			AppDeckColor color = new AppDeckColor();
-			color.color1 = color.color2 = parseColor(value.textValue());
+			color.color1 = parseColor(array.getString(0));
+			color.color2 = parseColor(array.getString(1));
 			return color;
 		}
 
+		// try as a string
+		String stringValue = root.getString(name);
+		if (stringValue != null)
+		{
+			AppDeckColor color = new AppDeckColor();
+			color.color1 = color.color2 = parseColor(stringValue);
+			return color;
+		}
+
+
 		return null;
 	}
-	
+
 	protected URI readURI(AppDeckJsonNode root, String name, String defaultValue)
 	{
-		AppDeckJsonNode node = root.path(name); 
-		if (node.isMissingNode() == false)			
-			return app_base_url.resolve(node.textValue());
-		if (defaultValue == null)
+		if (root == null)
+			return app_base_url.resolve(defaultValue);	
+		String uri = root.getString(name, defaultValue);
+		if (uri == null)
 			return null;
-		try {
-			return new URI(defaultValue);
-		} catch (URISyntaxException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		return null;
+		return app_base_url.resolve(uri);
 	}
 	
 	// store app conf

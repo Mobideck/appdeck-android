@@ -63,7 +63,7 @@ public class GoogleCloudMessagingHelper {
             }
         } else {
             Log.i(TAG, "No valid Google Play Services APK found.");
-        }    	
+        }
     }
 	
     
@@ -75,13 +75,13 @@ public class GoogleCloudMessagingHelper {
 	private boolean checkPlayServices(Context context) {
 	    int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable(context);
 	    if (resultCode != ConnectionResult.SUCCESS) {
-	        /*if (GooglePlayServicesUtil.isUserRecoverableError(resultCode)) {
-	            GooglePlayServicesUtil.getErrorDialog(resultCode, appDeck.loader,
-	                    PLAY_SERVICES_RESOLUTION_REQUEST).show();
-	        } else {
-	            Log.i(TAG, "This device is not supported.");
-	            //finish();
-	        }*/
+	        //if (GooglePlayServicesUtil.isUserRecoverableError(resultCode)) {
+	        //    GooglePlayServicesUtil.getErrorDialog(resultCode, appDeck.loader,
+	        //            PLAY_SERVICES_RESOLUTION_REQUEST).show();
+	        //} else {
+	        //    Log.i(TAG, "This device is not supported.");
+	        //    //finish();
+	        //}
 	        return false;
 	    }
 	    return true;
